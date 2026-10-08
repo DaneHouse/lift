@@ -12,7 +12,25 @@ const tabs = [
 
 export default function TabsLayout() {
   const theme = useAppTheme();
-  return <Tabs screenOptions={{ headerShown: false, tabBarActiveTintColor: theme.foreground, tabBarInactiveTintColor: theme.muted, tabBarStyle: { backgroundColor: theme.background, borderTopColor: theme.divider } }}>
-    {tabs.map(([name, title, icon]) => <Tabs.Screen key={name} name={name} options={{ title, tabBarIcon: ({ color, size }) => <Ionicons name={icon} color={color} size={size} /> }} />)}
-  </Tabs>;
+  return (
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: theme.foreground,
+        tabBarInactiveTintColor: theme.muted,
+        tabBarStyle: { backgroundColor: theme.background, borderTopColor: theme.divider },
+      }}
+    >
+      {tabs.map(([name, title, icon]) => (
+        <Tabs.Screen
+          key={name}
+          name={name}
+          options={{
+            title,
+            tabBarIcon: ({ color, size }) => <Ionicons name={icon} color={color} size={size} />,
+          }}
+        />
+      ))}
+    </Tabs>
+  );
 }

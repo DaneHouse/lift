@@ -17,6 +17,8 @@ describe('bundled exercise library', () => {
     const first = exerciseLibrary[0];
     expect(first).toBeDefined();
     if (!first) return;
-    expect(filterExercises(first.name, first.primaryMuscles[0], first.equipment)).toContainEqual(first);
+    expect(filterExercises(first.name, first.primaryMuscles[0], first.equipment)).toContainEqual(
+      first,
+    );
   });
 });

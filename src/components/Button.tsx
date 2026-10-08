@@ -12,11 +12,25 @@ export function Button({ children, disabled, style, ...props }: Props) {
     <Pressable
       {...props}
       disabled={disabled}
-      style={(state) => [styles.root, { backgroundColor: theme.foreground, opacity: disabled || state.pressed ? 0.55 : 1 }, typeof style === 'function' ? style(state) : style]}
+      style={(state) => [
+        styles.root,
+        { backgroundColor: theme.foreground, opacity: disabled || state.pressed ? 0.55 : 1 },
+        typeof style === 'function' ? style(state) : style,
+      ]}
     >
-      <Text variant="label" style={{ color: theme.background }}>{children}</Text>
+      <Text variant="label" style={{ color: theme.background }}>
+        {children}
+      </Text>
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({ root: { minHeight: 48, borderRadius: radius.md, paddingHorizontal: spacing.lg, alignItems: 'center', justifyContent: 'center' } });
+const styles = StyleSheet.create({
+  root: {
+    minHeight: 48,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

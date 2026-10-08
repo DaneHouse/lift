@@ -10,7 +10,9 @@ const syncColumns = {
 export const profiles = sqliteTable('profiles', {
   ...syncColumns,
   displayName: text('display_name'),
-  unit: text('unit', { enum: ['lb', 'kg'] }).notNull().default('lb'),
+  unit: text('unit', { enum: ['lb', 'kg'] })
+    .notNull()
+    .default('lb'),
   sessionLength: integer('session_length').notNull().default(60),
 });
 
@@ -62,7 +64,9 @@ export const routineItems = sqliteTable('routine_items', {
   increment: real('increment').notNull().default(5),
   restSeconds: integer('rest_seconds').notNull().default(90),
   supersetGroup: text('superset_group'),
-  setType: text('set_type', { enum: ['normal', 'warmup', 'drop'] }).notNull().default('normal'),
+  setType: text('set_type', { enum: ['normal', 'warmup', 'drop'] })
+    .notNull()
+    .default('normal'),
   order: integer('sort_order').notNull(),
 });
 
@@ -93,7 +97,9 @@ export const workoutSets = sqliteTable('workout_sets', {
   rir: real('rir'),
   done: integer('done', { mode: 'boolean' }).notNull().default(false),
   warmup: integer('warmup', { mode: 'boolean' }).notNull().default(false),
-  setType: text('set_type', { enum: ['normal', 'warmup', 'drop'] }).notNull().default('normal'),
+  setType: text('set_type', { enum: ['normal', 'warmup', 'drop'] })
+    .notNull()
+    .default('normal'),
   order: integer('sort_order').notNull(),
 });
 
@@ -150,7 +156,11 @@ export const coachProposals = sqliteTable('coach_proposals', {
 
 export const settings = sqliteTable(
   'settings',
-  { ...syncColumns, key: text('key').notNull(), value: text('value', { mode: 'json' }).$type<unknown>().notNull() },
+  {
+    ...syncColumns,
+    key: text('key').notNull(),
+    value: text('value', { mode: 'json' }).$type<unknown>().notNull(),
+  },
   (table) => [uniqueIndex('settings_user_key').on(table.userId, table.key)],
 );
 
@@ -162,7 +172,21 @@ export const progressPhotos = sqliteTable('progress_photos', {
 });
 
 export const schema = {
-  profiles, exercises, customExercises, exerciseRefs, routines, routineItems, schedules,
-  workouts, workoutSets, bodyweight, injuries, injuryCheckins, healthDaily, coachThreads,
-  coachProposals, settings, progressPhotos,
+  profiles,
+  exercises,
+  customExercises,
+  exerciseRefs,
+  routines,
+  routineItems,
+  schedules,
+  workouts,
+  workoutSets,
+  bodyweight,
+  injuries,
+  injuryCheckins,
+  healthDaily,
+  coachThreads,
+  coachProposals,
+  settings,
+  progressPhotos,
 };

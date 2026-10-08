@@ -16,4 +16,8 @@ export function Screen({ children, scroll = true, style }: Props) {
   );
 }
 
-const styles = StyleSheet.create({ safe: { flex: 1 }, scroll: { flexGrow: 1 }, content: { flex: 1, padding: spacing.lg, gap: spacing.md } });
+const styles = StyleSheet.create({
+  safe: { flex: 1 },
+  scroll: { flexGrow: 1 },
+  content: { flex: 1, padding: spacing.lg, gap: spacing.md },
+});

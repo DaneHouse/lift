@@ -8,5 +8,7 @@ export function Text({ style, ...props }: TextProps & { variant?: Variant }) {
   const theme = useAppTheme();
   const variant = props.variant ?? 'body';
   const { variant: _variant, ...nativeProps } = props;
-  return <NativeText {...nativeProps} style={[type[variant], { color: theme.foreground }, style]} />;
+  return (
+    <NativeText {...nativeProps} style={[type[variant], { color: theme.foreground }, style]} />
+  );
 }

@@ -1,0 +1,9 @@
+node_modules
+ios
+android
+coverage
+src/data/exercises.json
+package-lock.json
+AGENTS.md
+SPEC.md
+licenses
