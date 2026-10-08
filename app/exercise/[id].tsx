@@ -1,7 +1,7 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Linking, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { Section } from '@/components/Section';
@@ -13,16 +13,21 @@ import {
   type ActivePlanDay,
 } from '@/db/repository';
 import {
+  addReference,
   deleteCustomExercise,
+  deleteReference,
+  type ExerciseRecord,
+  type ExerciseReference,
   getExercise,
   getFavourites,
+  listReferences,
   toggleFavourite,
-  type ExerciseRecord,
 } from '@/db/library';
+import { normalizeUrl, referenceLabel } from '@/domain/library';
 import { exerciseHistory } from '@/db/targets';
 import { type Unit } from '@/domain/importExport';
 import { type WorkoutPerformance } from '@/domain/progression';
-import { spacing } from '@/theme/tokens';
+import { radius, spacing } from '@/theme/tokens';
 import { useAppTheme } from '@/theme/useAppTheme';
 
 const modeLabel = { reps: 'Reps', time: 'Time', cardio: 'Cardio' } as const;
@@ -37,19 +42,25 @@ export default function ExerciseDetail() {
   const [days, setDays] = useState<ActivePlanDay[]>([]);
   const [unit, setUnit] = useState<Unit>('lb');
   const [message, setMessage] = useState('');
+  const [references, setReferences] = useState<ExerciseReference[]>([]);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkTitle, setLinkTitle] = useState('');
+  const [linkError, setLinkError] = useState('');
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
       void (async () => {
-        const [record, saved, sessions, plan, profile] = await Promise.all([
+        const [record, saved, sessions, plan, profile, links] = await Promise.all([
           getExercise(database, id),
           getFavourites(database),
           exerciseHistory(database, id),
           loadActivePlan(database),
           getProfile(database),
+          listReferences(database, id),
         ]);
         if (!active) return;
+        setReferences(links);
         setExercise(record);
         setFavourite(saved.includes(id));
         setHistory(sessions.slice(-5).reverse());
@@ -139,6 +150,81 @@ export default function ExerciseDetail() {
         )}
       </Section>
 
+      <Section title="References">
+        {references.length ? (
+          references.map((link) => (
+            <View key={link.id} style={styles.reference}>
+              <Pressable
+                accessibilityRole="link"
+                onPress={() => void Linking.openURL(link.url)}
+                style={styles.referenceText}
+              >
+                <Text variant="title" numberOfLines={1}>
+                  {link.title || referenceLabel(link.url)}
+                </Text>
+                <Text style={{ color: theme.muted }} numberOfLines={1}>
+                  {referenceLabel(link.url)} · {link.url}
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Remove link"
+                onPress={() => {
+                  void deleteReference(database, link.id).then(() =>
+                    setReferences((items) => items.filter((item) => item.id !== link.id)),
+                  );
+                }}
+              >
+                <Text style={{ color: theme.muted }}>Remove</Text>
+              </Pressable>
+            </View>
+          ))
+        ) : (
+          <Text style={{ color: theme.muted }}>
+            Attach your own links: Instagram, TikTok, YouTube or any page.
+          </Text>
+        )}
+        <TextInput
+          accessibilityLabel="Link URL"
+          value={linkUrl}
+          onChangeText={(value) => {
+            setLinkUrl(value);
+            setLinkError('');
+          }}
+          placeholder="https://"
+          placeholderTextColor={theme.muted}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
+          style={[styles.input, { color: theme.foreground, backgroundColor: theme.surface }]}
+        />
+        <TextInput
+          accessibilityLabel="Link title"
+          value={linkTitle}
+          onChangeText={setLinkTitle}
+          placeholder="Title (optional)"
+          placeholderTextColor={theme.muted}
+          style={[styles.input, { color: theme.foreground, backgroundColor: theme.surface }]}
+        />
+        {linkError ? <Text>{linkError}</Text> : null}
+        <Button
+          onPress={() => {
+            const url = normalizeUrl(linkUrl);
+            if (!url) {
+              setLinkError('Enter a web address, for example youtube.com/watch?v=');
+              return;
+            }
+            void addReference(database, exercise.id, url, linkTitle).then(async () => {
+              setReferences(await listReferences(database, exercise.id));
+              setLinkUrl('');
+              setLinkTitle('');
+            });
+          }}
+        >
+          Add link
+        </Button>
+      </Section>
+
       <Section title="Add to a plan day">
         {days.length ? (
           days.map((day) => (
@@ -182,4 +268,12 @@ function formatSet(set: WorkoutPerformance['sets'][number], unit: Unit) {
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   session: { gap: 2, paddingVertical: spacing.xs },
+  reference: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  referenceText: { flex: 1, gap: 2 },
+  input: { padding: spacing.md, borderRadius: radius.md, fontSize: 16 },
 });

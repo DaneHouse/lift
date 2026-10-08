@@ -168,3 +168,47 @@ export async function deleteCustomExercise(database: SQLiteDatabase, id: string)
     id,
   );
 }
+
+// ---- exercise references (links the user attaches to any exercise) ----------
+
+export type ExerciseReference = { id: string; url: string; title: string | null };
+
+export async function listReferences(
+  database: SQLiteDatabase,
+  exerciseId: string,
+): Promise<ExerciseReference[]> {
+  const rows = await database.getAllAsync<{ id: string; uri: string; title: string | null }>(
+    "SELECT id, uri, title FROM exercise_refs WHERE user_id = ? AND exercise_id = ? AND kind = 'url' AND deleted_at IS NULL ORDER BY updated_at ASC, rowid ASC",
+    LOCAL_USER,
+    exerciseId,
+  );
+  return rows.map((row) => ({ id: row.id, url: row.uri, title: row.title }));
+}
+
+export async function addReference(
+  database: SQLiteDatabase,
+  exerciseId: string,
+  url: string,
+  title: string | null,
+) {
+  const stamp = now();
+  await database.runAsync(
+    "INSERT INTO exercise_refs (id,user_id,exercise_id,kind,uri,title,updated_at) VALUES (?,?,?,'url',?,?,?)",
+    newId('ref'),
+    LOCAL_USER,
+    exerciseId,
+    url,
+    title?.trim() || null,
+    stamp,
+  );
+}
+
+export async function deleteReference(database: SQLiteDatabase, id: string) {
+  const stamp = now();
+  await database.runAsync(
+    'UPDATE exercise_refs SET deleted_at = ?, updated_at = ? WHERE id = ?',
+    stamp,
+    stamp,
+    id,
+  );
+}

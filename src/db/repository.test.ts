@@ -28,7 +28,10 @@ import { importWorkoutCsv } from '@/domain/importExport';
 import { nextRoutine, starterTemplates } from '@/domain/plans';
 import { type ExercisePlan } from '@/domain/targets';
 import {
+  addReference,
   deleteCustomExercise,
+  deleteReference,
+  listReferences,
   getExercise,
   getFavourites,
   listAllExercises,
@@ -435,5 +438,23 @@ describe('exercise library', () => {
     await toggleFavourite(database, 'custom-x');
     await restart();
     expect(await getFavourites(database)).toEqual(['0001']);
+  });
+});
+
+describe('exercise references', () => {
+  it('stores links per exercise, survives restart, and removes softly', async () => {
+    await addReference(database, '0001', 'https://www.youtube.com/watch?v=abc', 'Form');
+    await addReference(database, '0001', 'https://www.instagram.com/reel/xyz', null);
+    await addReference(database, '0002', 'https://example.com', null);
+    await restart();
+    const links = await listReferences(database, '0001');
+    expect(links).toMatchObject([
+      { url: 'https://www.youtube.com/watch?v=abc', title: 'Form' },
+      { url: 'https://www.instagram.com/reel/xyz', title: null },
+    ]);
+    await deleteReference(database, links[0]!.id);
+    expect((await listReferences(database, '0001')).map((link) => link.url)).toEqual([
+      'https://www.instagram.com/reel/xyz',
+    ]);
   });
 });
