@@ -26,6 +26,8 @@ import {
 } from './repository';
 import { importWorkoutCsv } from '@/domain/importExport';
 import { nextRoutine, starterTemplates } from '@/domain/plans';
+import { type ExercisePlan } from '@/domain/targets';
+import { saveRoutineItem, listRoutineItems } from './repository';
 
 function adapt(raw: DatabaseSync) {
   const adapter = {
@@ -84,6 +86,15 @@ const restart = async () => {
   await openDatabase();
 };
 
+const PLAN = {
+  policy: 'double' as const,
+  sets: 2,
+  repMin: 8,
+  repMax: 12,
+  increment: 5,
+  seconds: 0,
+};
+
 const draftWith = (overrides: Partial<SessionDraft> = {}): SessionDraft => ({
   workoutId: 'workout-test-1',
   name: 'Full Body A',
@@ -91,20 +102,26 @@ const draftWith = (overrides: Partial<SessionDraft> = {}): SessionDraft => ({
   notes: 'felt good',
   exercises: [
     {
+      slotId: 'slot-1',
       id: '0001',
       name: '3/4 sit-up',
       reason: 'Plan 3×10',
       restSeconds: 60,
+      kind: 'reps',
+      plan: PLAN,
       sets: [
         { id: 's1', weight: 0, reps: 10, targetReps: 10, done: true },
         { id: 's2', weight: 0, reps: 10, targetReps: 10, done: false },
       ],
     },
     {
+      slotId: 'slot-2',
       id: 'custom-lunge',
       name: 'Lunge',
       reason: 'Plan 2×8',
       restSeconds: 90,
+      kind: 'reps',
+      plan: PLAN,
       sets: [{ id: 's3', weight: 35, reps: 8, targetReps: 8, done: true, rir: 2 }],
     },
   ],
@@ -161,7 +178,7 @@ describe('plans and routines', () => {
     await saveActivePlan(database, template, 60);
     const before = await loadActivePlan(database);
     const day1 = before.days[0]!;
-    const draft = await draftFromRoutine(database, day1.routineId, day1.name);
+    const draft = await draftFromRoutine(database, day1.routineId, day1.name, 'lb');
     await finishDraft(database, { ...draft, exercises: [] });
 
     const after = await loadActivePlan(database);
@@ -185,7 +202,12 @@ describe('plans and routines', () => {
     const template = starterTemplates.find((item) => item.id === 'full-3')!;
     await saveActivePlan(database, template, 60);
     const plan = await loadActivePlan(database);
-    const draft = await draftFromRoutine(database, plan.days[0]!.routineId, plan.days[0]!.name);
+    const draft = await draftFromRoutine(
+      database,
+      plan.days[0]!.routineId,
+      plan.days[0]!.name,
+      'lb',
+    );
     expect(draft.exercises.length).toBe(plan.days[0]!.exerciseCount);
     expect(draft.exercises[0]?.reason).toMatch(/^Plan \d+×/);
     expect(draft.exercises[0]?.sets.every((set) => !set.done)).toBe(true);
@@ -243,5 +265,81 @@ describe('imports against SQLite', () => {
       'SELECT name FROM custom_exercises',
     );
     expect(custom.map((row) => row.name).sort()).toEqual(['Test Carry', 'Test Press']);
+  });
+});
+
+describe('progression drives the session', () => {
+  /** Logs every set of the named slot as done, at the given load (time slots keep their hold). */
+  const completeSlot = (draft: SessionDraft, name: string, weight: number): SessionDraft => ({
+    ...draft,
+    exercises: draft.exercises.map((exercise) =>
+      exercise.name === name
+        ? {
+            ...exercise,
+            sets: exercise.sets.map((set) => ({ ...set, weight, done: true })),
+          }
+        : exercise,
+    ),
+  });
+
+  it('finishing a session feeds the next target for that exercise', async () => {
+    const template = starterTemplates.find((item) => item.id === '5x5')!;
+    await saveActivePlan(database, template, 60);
+    const routineId = (await loadActivePlan(database)).days[0]!.routineId;
+
+    const first = await draftFromRoutine(database, routineId, 'Day 1', 'lb');
+    const squat = first.exercises.find((exercise) => exercise.name === 'Back squat')!;
+    expect(squat.reason).toMatch(/no history yet/);
+    expect(squat.sets).toHaveLength(5);
+
+    await finishDraft(database, completeSlot(first, 'Back squat', 135));
+    await restart();
+
+    const next = await draftFromRoutine(database, routineId, 'Day 1', 'lb');
+    const squatNext = next.exercises.find((exercise) => exercise.name === 'Back squat')!;
+    expect(squatNext.reason).toBe('Hit 5x5 last time → +5 lb');
+    expect(squatNext.sets[0]).toMatchObject({ weight: 140, reps: 5 });
+  });
+
+  it('a timed hold that is held adds seconds next session', async () => {
+    const template = starterTemplates.find((item) => item.id === '5x5')!;
+    await saveActivePlan(database, template, 60);
+    const routineId = (await loadActivePlan(database)).days[0]!.routineId;
+
+    const first = await draftFromRoutine(database, routineId, 'Day 1', 'lb');
+    const plank = first.exercises.find((exercise) => exercise.name === 'Plank')!;
+    expect(plank.kind).toBe('time');
+    expect(plank.sets[0]?.seconds).toBe(30);
+    await finishDraft(database, completeSlot(first, 'Plank', 0));
+
+    const next = await draftFromRoutine(database, routineId, 'Day 1', 'lb');
+    const plankNext = next.exercises.find((exercise) => exercise.name === 'Plank')!;
+    expect(plankNext.reason).toBe('Held all sets → +5s');
+    expect(plankNext.sets[0]?.seconds).toBe(35);
+  });
+
+  it('plan editor changes persist and set the next session targets', async () => {
+    const template = starterTemplates.find((item) => item.id === '5x5')!;
+    await saveActivePlan(database, template, 60);
+    const routineId = (await loadActivePlan(database)).days[0]!.routineId;
+    const [squat] = await listRoutineItems(database, routineId);
+    const edited: ExercisePlan = {
+      ...squat!.plan,
+      policy: 'double',
+      repMin: 3,
+      repMax: 5,
+      sets: 4,
+    };
+    await saveRoutineItem(database, squat!.id, edited, 180);
+    await restart();
+
+    const [reloaded] = await listRoutineItems(database, routineId);
+    expect(reloaded).toMatchObject({ name: 'Back squat', mode: 'reps', restSeconds: 180 });
+    expect(reloaded?.plan).toMatchObject({ policy: 'double', repMin: 3, repMax: 5, sets: 4 });
+    const draft = await draftFromRoutine(database, routineId, 'Day 1', 'lb');
+    expect(draft.exercises[0]).toMatchObject({
+      restSeconds: 180,
+      reason: 'Plan 4×3–5 · no history yet',
+    });
   });
 });

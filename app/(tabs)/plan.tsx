@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -6,7 +6,13 @@ import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { Section } from '@/components/Section';
 import { Text } from '@/components/Text';
-import { getProfile, loadActivePlan, saveActivePlan, updateProfile } from '@/db/repository';
+import {
+  type ActivePlanDay,
+  getProfile,
+  loadActivePlan,
+  saveActivePlan,
+  updateProfile,
+} from '@/db/repository';
 import { fitSessionLength, starterTemplates } from '@/domain/plans';
 import { spacing } from '@/theme/tokens';
 import { useAppTheme } from '@/theme/useAppTheme';
@@ -19,6 +25,7 @@ export default function Plan() {
   const [minutes, setMinutes] = useState<Minutes>(60);
   const [templateId, setTemplateId] = useState(starterTemplates[0]!.id);
   const [activeName, setActiveName] = useState<string | null>(null);
+  const [days, setDays] = useState<ActivePlanDay[]>([]);
   const [status, setStatus] = useState('');
   const template = starterTemplates.find((item) => item.id === templateId) ?? starterTemplates[0]!;
   const day = fitSessionLength(template.days[0]!, minutes);
@@ -26,13 +33,12 @@ export default function Plan() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      void Promise.all([getProfile(database), loadActivePlan(database)]).then(
-        ([profile, plan]) => {
-          if (!active) return;
-          setMinutes(profile.sessionMinutes);
-          setActiveName(plan.days[0]?.name.replace(/ · Day \d+$/, '') ?? null);
-        },
-      );
+      void Promise.all([getProfile(database), loadActivePlan(database)]).then(([profile, plan]) => {
+        if (!active) return;
+        setMinutes(profile.sessionMinutes);
+        setActiveName(plan.days[0]?.name.replace(/ · Day \d+$/, '') ?? null);
+        setDays(plan.days);
+      });
       return () => {
         active = false;
       };
@@ -48,6 +54,7 @@ export default function Plan() {
     try {
       await saveActivePlan(database, template, minutes);
       setActiveName(template.name);
+      setDays((await loadActivePlan(database)).days);
       setStatus(`${template.name} is now your plan.`);
     } catch {
       setStatus('Could not save the plan.');
@@ -91,6 +98,20 @@ export default function Plan() {
           </Text>
         ))}
       </Section>
+      {days.length ? (
+        <Section title="Active days">
+          {days.map((day) => (
+            <Pressable
+              key={day.routineId}
+              onPress={() => router.push(`/plan-day/${day.routineId}`)}
+            >
+              <Text>
+                {day.name.replace(/^.* · /, '')} · {day.exerciseCount} exercises
+              </Text>
+            </Pressable>
+          ))}
+        </Section>
+      ) : null}
       <Button onPress={() => void savePlan()}>Use this plan</Button>
       {status ? <Text>{status}</Text> : null}
       <Text>Schedule by weekday or use rotation to run the next undone session.</Text>

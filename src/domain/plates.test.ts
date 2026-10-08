@@ -22,6 +22,8 @@ describe('unit consistency', () => {
   it('uses a unit-appropriate reverse target', () => {
     expect(reverseTarget.lb).toBe(225);
     expect(reverseTarget.kg).toBe(100);
-    expect(platesForTarget(reverseTarget.kg, barOptions.kg.olympic, plateOptions.kg).remainder).toBe(0);
+    expect(
+      platesForTarget(reverseTarget.kg, barOptions.kg.olympic, plateOptions.kg).remainder,
+    ).toBe(0);
   });
 });

@@ -8,7 +8,8 @@ import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { Stepper } from '@/components/Stepper';
 import { Text } from '@/components/Text';
-import { finishDraft, loadDraft, saveDraft } from '@/db/repository';
+import { finishDraft, getProfile, loadDraft, saveDraft } from '@/db/repository';
+import { type Unit } from '@/domain/importExport';
 import { sessionVolume } from '@/domain/session';
 import { useTrainingStore } from '@/state/training';
 import { radius, spacing } from '@/theme/tokens';
@@ -23,6 +24,11 @@ export default function SessionScreen() {
   const [saveError, setSaveError] = useState('');
   const [rest, setRest] = useState(0);
   const [restTarget, setRestTarget] = useState(0);
+  const [unit, setUnit] = useState<Unit>('lb');
+  useEffect(() => {
+    void getProfile(database).then((profile) => setUnit(profile.unit));
+  }, [database]);
+  const weightStep = unit === 'kg' ? 2.5 : 5;
   // Load the persisted draft once. Autosave only runs after this, so the load never writes back.
   useEffect(() => {
     void loadDraft(database).then((loaded) => {
@@ -79,27 +85,38 @@ export default function SessionScreen() {
         </View>
       )}
       {exercises.map((exercise) => (
-        <View key={exercise.id} style={[styles.exercise, { borderTopColor: theme.divider }]}>
+        <View key={exercise.slotId} style={[styles.exercise, { borderTopColor: theme.divider }]}>
           <Text variant="title">{exercise.name}</Text>
           <Text style={{ color: theme.muted }}>{exercise.reason}</Text>
           {exercise.sets.map((workoutSet, index) => (
             <View key={workoutSet.id} style={styles.set}>
               <Text>{index + 1}</Text>
-              <Stepper
-                value={workoutSet.weight}
-                step={5}
-                suffix="lb"
-                onChange={(delta) => adjustSet(exercise.id, workoutSet.id, 'weight', delta)}
-              />
-              <Stepper
-                value={workoutSet.reps}
-                suffix="reps"
-                onChange={(delta) => adjustSet(exercise.id, workoutSet.id, 'reps', delta)}
-              />
+              {exercise.kind === 'time' ? (
+                <Stepper
+                  value={workoutSet.seconds ?? 0}
+                  step={5}
+                  suffix="sec"
+                  onChange={(delta) => adjustSet(exercise.slotId, workoutSet.id, 'seconds', delta)}
+                />
+              ) : (
+                <>
+                  <Stepper
+                    value={workoutSet.weight}
+                    step={weightStep}
+                    suffix={unit}
+                    onChange={(delta) => adjustSet(exercise.slotId, workoutSet.id, 'weight', delta)}
+                  />
+                  <Stepper
+                    value={workoutSet.reps}
+                    suffix="reps"
+                    onChange={(delta) => adjustSet(exercise.slotId, workoutSet.id, 'reps', delta)}
+                  />
+                </>
+              )}
               <Pressable
                 accessibilityLabel={`Log set ${index + 1}`}
                 onPress={() => {
-                  toggleSet(exercise.id, workoutSet.id);
+                  toggleSet(exercise.slotId, workoutSet.id);
                   if (!workoutSet.done) {
                     setRestTarget(exercise.restSeconds);
                     setRest(exercise.restSeconds);
@@ -126,7 +143,7 @@ export default function SessionScreen() {
                 <Stepper
                   key={set.id}
                   value={set.rir ?? 0}
-                  onChange={(delta) => adjustSet(exercise.id, set.id, 'rir', delta)}
+                  onChange={(delta) => adjustSet(exercise.slotId, set.id, 'rir', delta)}
                 />
               ))}
           </View>
@@ -144,7 +161,9 @@ export default function SessionScreen() {
         multiline
         style={[styles.notes, { color: theme.foreground, backgroundColor: theme.surface }]}
       />
-      <Text>Volume {sessionVolume(exercises).toLocaleString()} lb</Text>
+      <Text>
+        Volume {sessionVolume(exercises).toLocaleString()} {unit}
+      </Text>
       {saveError ? <Text>{saveError}</Text> : null}
       <Button
         disabled={!draft}

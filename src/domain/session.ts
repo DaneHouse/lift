@@ -1,7 +1,11 @@
+import type { ExercisePlan } from './targets';
+
 export type SessionSet = {
   id: string;
   weight: number;
   reps: number;
+  /** Hold length for time-based sets. */
+  seconds?: number | undefined;
   targetReps: number;
   rir?: number | undefined;
   done: boolean;
@@ -9,10 +13,16 @@ export type SessionSet = {
   setType?: 'normal' | 'warmup' | 'drop' | undefined;
 };
 export type SessionExercise = {
+  /** Unique per session slot, so the same exercise can appear twice after an add. */
+  slotId: string;
+  /** Exercise id (library or custom). */
   id: string;
   name: string;
   reason: string;
   restSeconds: number;
+  kind: 'reps' | 'time';
+  plan: ExercisePlan;
+  skipped?: boolean | undefined;
   sets: SessionSet[];
 };
 

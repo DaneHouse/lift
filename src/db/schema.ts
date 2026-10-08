@@ -33,6 +33,9 @@ export const customExercises = sqliteTable('custom_exercises', {
   secondaryMuscles: text('secondary_muscles', { mode: 'json' }).$type<string[]>().notNull(),
   equipment: text('equipment'),
   instructions: text('instructions', { mode: 'json' }).$type<string[]>().notNull(),
+  mode: text('mode', { enum: ['reps', 'time', 'cardio'] })
+    .notNull()
+    .default('reps'),
 });
 
 export const exerciseRefs = sqliteTable('exercise_refs', {

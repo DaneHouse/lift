@@ -26,10 +26,12 @@ export type BaseInput = {
   increment: number;
   history: WorkoutPerformance[];
   deloadWeek?: boolean | undefined;
+  unit?: Unit | undefined;
 };
 
 const round = (value: number, increment: number) => Math.round(value / increment) * increment;
 const last = (history: WorkoutPerformance[]) => history.at(-1);
+const withUnit = (value: number, unit?: Unit | undefined) => `${value}${unit ? ` ${unit}` : ''}`;
 const allHit = (performance: WorkoutPerformance | undefined, reps: number, sets: number) =>
   !!performance &&
   performance.sets.length >= sets &&
@@ -48,7 +50,7 @@ export function linearProgression(input: BaseInput): ProgressionTarget {
       weight: input.weight + input.increment,
       reps: input.reps,
       sets: input.sets,
-      reason: `Hit ${input.sets}x${input.reps} last time → +${input.increment}`,
+      reason: `Hit ${input.sets}x${input.reps} last time → +${withUnit(input.increment, input.unit)}`,
     };
   const recent = input.history.slice(-3);
   if (recent.length === 3 && recent.every((session) => !allHit(session, input.reps, input.sets)))
@@ -82,7 +84,7 @@ export function doubleProgression(
       weight: input.weight + input.increment,
       reps: input.repMin,
       sets: input.sets,
-      reason: `Hit top of range ${input.repMax} → +${input.increment}, reset to ${input.repMin}`,
+      reason: `Hit top of range ${input.repMax} → +${withUnit(input.increment, input.unit)}, reset to ${input.repMin}`,
     };
   // An empty log has no minimum; treat it like no history so the target starts at the bottom.
   const minimum =

@@ -25,12 +25,23 @@ CREATE INDEX IF NOT EXISTS routine_items_routine_id ON routine_items (routine_id
 CREATE INDEX IF NOT EXISTS schedules_user_mode ON schedules (user_id, mode);
 `;
 
+const migration002 = `
+ALTER TABLE custom_exercises ADD COLUMN mode TEXT NOT NULL DEFAULT 'reps';
+`;
+
+const migrations: { version: number; sql: string }[] = [
+  { version: 1, sql: migration001 },
+  { version: 2, sql: migration002 },
+];
+
 export async function migrate(database: SQLiteDatabase) {
   const version = await database.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
-  if ((version?.user_version ?? 0) < 1) {
+  const current = version?.user_version ?? 0;
+  for (const step of migrations) {
+    if (current >= step.version) continue;
     await database.withTransactionAsync(async () => {
-      await database.execAsync(migration001);
-      await database.execAsync('PRAGMA user_version = 1');
+      await database.execAsync(step.sql);
+      await database.execAsync(`PRAGMA user_version = ${step.version}`);
     });
   }
 }

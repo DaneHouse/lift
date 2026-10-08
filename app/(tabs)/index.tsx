@@ -8,6 +8,7 @@ import { Text } from '@/components/Text';
 import {
   type ActivePlanDay,
   draftFromRoutine,
+  getProfile,
   loadActivePlan,
   loadDraft,
   saveDraft,
@@ -45,7 +46,8 @@ export default function Today() {
   const start = async () => {
     if (!next) return;
     try {
-      const draft = await draftFromRoutine(database, next.routineId, next.name);
+      const { unit } = await getProfile(database);
+      const draft = await draftFromRoutine(database, next.routineId, next.name, unit);
       await saveDraft(database, draft);
       setDraft(draft);
       router.push('/session');

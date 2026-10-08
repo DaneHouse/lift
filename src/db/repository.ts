@@ -8,11 +8,14 @@ import {
   type StarterTemplate,
   type TemplateExercise,
 } from '@/domain/plans';
+import { modeFor } from '@/domain/exercises';
 import { type SessionExercise, type SessionSet } from '@/domain/session';
+import { planForTemplateItem, type ExercisePlan } from '@/domain/targets';
+import { LOCAL_USER, now, newId } from './common';
+import { buildSessionExercise, planFromRow, rowFromPlan, type PlanRow } from './targets';
+import { getExercise } from './library';
 
-/** Single-device owner until accounts exist (P4). Every row is written under this id. */
-export const LOCAL_USER = 'local';
-const now = () => new Date().toISOString();
+export { LOCAL_USER } from './common';
 
 export const EXPORT_TABLES = [
   'profiles',
@@ -32,10 +35,6 @@ export const EXPORT_TABLES = [
   'settings',
   'progress_photos',
 ] as const;
-
-export function newId(prefix = 'id') {
-  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
 
 const slug = (name: string) =>
   name
@@ -213,6 +212,7 @@ export async function finishDraft(database: SQLiteDatabase, draft: SessionDraft)
       await ensureExercise(database, exercise.id, exercise.name);
       for (const set of exercise.sets) {
         if (!set.done) continue;
+        const timed = exercise.kind === 'time';
         await database.runAsync(
           'INSERT INTO workout_sets (id,user_id,workout_id,exercise_id,weight,reps,seconds,rir,done,warmup,set_type,sort_order,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
           newId('set'),
@@ -220,8 +220,8 @@ export async function finishDraft(database: SQLiteDatabase, draft: SessionDraft)
           draft.workoutId,
           exercise.id,
           set.weight,
-          set.reps,
-          null,
+          timed ? 0 : set.reps,
+          timed ? (set.seconds ?? null) : null,
           set.rir ?? null,
           1,
           set.setType === 'warmup' ? 1 : 0,
@@ -274,24 +274,8 @@ export async function listCompletedWorkouts(database: SQLiteDatabase): Promise<H
   }));
 }
 
-/** Most recent completed weight for an exercise, or undefined when there is no history. */
-export async function lastWeightFor(database: SQLiteDatabase, exerciseId: string) {
-  const row = await database.getFirstAsync<{ weight: number }>(
-    `SELECT ws.weight FROM workout_sets ws JOIN workouts w ON w.id = ws.workout_id
-     WHERE ws.exercise_id = ? AND ws.done = 1 AND ws.deleted_at IS NULL AND w.completed_at IS NOT NULL
-     ORDER BY w.started_at DESC, ws.sort_order DESC LIMIT 1`,
-    exerciseId,
-  );
-  return row?.weight ?? undefined;
-}
-
 // ---- plans ----------------------------------------------------------------
 
-const policyFor: Record<TemplateExercise['role'], string> = {
-  compound: 'linear',
-  accessory: 'double',
-  'core-rehab': 'double',
-};
 const restFor: Record<TemplateExercise['role'], number> = {
   compound: 150,
   accessory: 90,
@@ -310,6 +294,7 @@ export async function saveActivePlan(
   minutes: 45 | 60 | 75 | 90,
 ) {
   const stamp = now();
+  const { unit } = await getProfile(database);
   await database.withTransactionAsync(async () => {
     const previous = await database.getAllAsync<{ id: string }>(
       'SELECT id FROM routines WHERE user_id = ? AND template_key IS NOT NULL AND deleted_at IS NULL',
@@ -359,25 +344,15 @@ export async function saveActivePlan(
       for (const [order, item] of fitSessionLength(day, minutes).entries()) {
         const exerciseId = resolveExerciseId(item.name);
         await ensureExercise(database, exerciseId, item.name);
-        await database.runAsync(
-          'INSERT INTO routine_items (id,user_id,routine_id,exercise_id,sets,reps,rep_min,rep_max,seconds,policy,increment,rest_seconds,superset_group,set_type,sort_order,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-          newId('item'),
-          LOCAL_USER,
+        const plan = planForTemplateItem(item, modeFor(item.name), unit);
+        await insertRoutineItem(database, {
           routineId,
           exerciseId,
-          item.sets,
-          null,
-          item.repMin,
-          item.repMax,
-          null,
-          policyFor[item.role],
-          5,
-          restFor[item.role],
-          null,
-          'normal',
+          plan,
+          restSeconds: restFor[item.role],
           order,
           stamp,
-        );
+        });
       }
     }
   });
@@ -415,41 +390,143 @@ export async function loadActivePlan(database: SQLiteDatabase) {
   };
 }
 
-/** Builds a session draft from a saved routine. Targets come from the plan, not the progression engine yet. */
+export type RoutineItem = {
+  id: string;
+  exerciseId: string;
+  name: string;
+  mode: ReturnType<typeof modeFor>;
+  plan: ExercisePlan;
+  restSeconds: number;
+  order: number;
+};
+
+type ItemRow = PlanRow & {
+  id: string;
+  exercise_id: string;
+  rest_seconds: number;
+  sort_order: number;
+};
+
+const itemFromRow = (row: ItemRow, name: string, mode: RoutineItem['mode']): RoutineItem => ({
+  id: row.id,
+  exerciseId: row.exercise_id,
+  name,
+  mode,
+  plan: planFromRow(row),
+  restSeconds: row.rest_seconds,
+  order: row.sort_order,
+});
+
+export async function listRoutineItems(
+  database: SQLiteDatabase,
+  routineId: string,
+): Promise<RoutineItem[]> {
+  const rows = await database.getAllAsync<ItemRow>(
+    'SELECT id, exercise_id, sets, rep_min, rep_max, seconds, policy, increment, rest_seconds, sort_order FROM routine_items WHERE routine_id = ? AND deleted_at IS NULL ORDER BY sort_order ASC',
+    routineId,
+  );
+  const items: RoutineItem[] = [];
+  for (const row of rows) {
+    const exercise = await getExercise(database, row.exercise_id);
+    items.push(itemFromRow(row, exercise?.name ?? row.exercise_id, exercise?.mode ?? 'reps'));
+  }
+  return items;
+}
+
+export async function insertRoutineItem(
+  database: SQLiteDatabase,
+  input: {
+    routineId: string;
+    exerciseId: string;
+    plan: ExercisePlan;
+    restSeconds: number;
+    order: number;
+    stamp?: string;
+  },
+) {
+  const values = rowFromPlan(input.plan);
+  await database.runAsync(
+    'INSERT INTO routine_items (id,user_id,routine_id,exercise_id,sets,reps,rep_min,rep_max,seconds,policy,increment,rest_seconds,superset_group,set_type,sort_order,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+    newId('item'),
+    LOCAL_USER,
+    input.routineId,
+    input.exerciseId,
+    values.sets,
+    null,
+    values.rep_min,
+    values.rep_max,
+    values.seconds,
+    values.policy,
+    values.increment,
+    input.restSeconds,
+    null,
+    'normal',
+    input.order,
+    input.stamp ?? now(),
+  );
+}
+
+/** Saves the plan editor's changes for one routine item. Takes effect at the next session's target. */
+export async function saveRoutineItem(
+  database: SQLiteDatabase,
+  itemId: string,
+  plan: ExercisePlan,
+  restSeconds: number,
+) {
+  const values = rowFromPlan(plan);
+  await database.runAsync(
+    'UPDATE routine_items SET sets = ?, rep_min = ?, rep_max = ?, seconds = ?, policy = ?, increment = ?, rest_seconds = ?, updated_at = ? WHERE id = ?',
+    values.sets,
+    values.rep_min,
+    values.rep_max,
+    values.seconds,
+    values.policy,
+    values.increment,
+    restSeconds,
+    now(),
+    itemId,
+  );
+}
+
+export async function removeRoutineItem(database: SQLiteDatabase, itemId: string) {
+  const stamp = now();
+  await database.runAsync(
+    'UPDATE routine_items SET deleted_at = ?, updated_at = ? WHERE id = ?',
+    stamp,
+    stamp,
+    itemId,
+  );
+}
+
+export async function getPlanDay(database: SQLiteDatabase, routineId: string) {
+  return database.getFirstAsync<{ name: string }>(
+    'SELECT name FROM routines WHERE id = ? AND deleted_at IS NULL',
+    routineId,
+  );
+}
+
+/**
+ * Builds a session draft from a saved routine. Each slot's target is the progression engine
+ * applied to that exercise's own logged history, so finished sessions feed the next target.
+ */
 export async function draftFromRoutine(
   database: SQLiteDatabase,
   routineId: string,
   name: string,
+  unit: Unit,
 ): Promise<SessionDraft> {
-  const items = await database.getAllAsync<{
-    exercise_id: string;
-    sets: number;
-    rep_min: number | null;
-    rep_max: number | null;
-    rest_seconds: number;
-  }>(
-    'SELECT exercise_id, sets, rep_min, rep_max, rest_seconds FROM routine_items WHERE routine_id = ? AND deleted_at IS NULL ORDER BY sort_order ASC',
-    routineId,
-  );
+  const items = await listRoutineItems(database, routineId);
   const exercises: DraftExercise[] = [];
   for (const item of items) {
-    const info = await exerciseInfo(database, item.exercise_id);
-    const reps = item.rep_min ?? 8;
-    const weight = (await lastWeightFor(database, item.exercise_id)) ?? 0;
-    const range = item.rep_max && item.rep_max !== reps ? `${reps}–${item.rep_max}` : `${reps}`;
-    exercises.push({
-      id: item.exercise_id,
-      name: info.name,
-      reason: `Plan ${item.sets}×${range}${weight ? ` · last time ${weight}` : ' · no history yet'}`,
-      restSeconds: item.rest_seconds,
-      sets: Array.from({ length: item.sets }, (_, index) => ({
-        id: `${item.exercise_id}-${index}`,
-        weight,
-        reps,
-        targetReps: reps,
-        done: false,
-      })),
-    });
+    exercises.push(
+      await buildSessionExercise(database, {
+        slotId: newId('slot'),
+        exercise: { id: item.exerciseId, name: item.name },
+        plan: item.plan,
+        restSeconds: item.restSeconds,
+        unit,
+      }),
+    );
   }
   return {
     workoutId: newId('workout'),
