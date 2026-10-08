@@ -1,16 +1,30 @@
-import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useSQLiteContext } from 'expo-sqlite';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
+import { getProfile, updateProfile } from '@/db/repository';
 import { barOptions, plateOptions, platesForTarget, totalWeight } from '@/domain/plates';
 import { radius, spacing } from '@/theme/tokens';
 import { useAppTheme } from '@/theme/useAppTheme';
 
 export default function PlatesScreen() {
   const theme = useAppTheme();
+  const database = useSQLiteContext();
   const [unit, setUnit] = useState<'lb' | 'kg'>('lb');
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      void getProfile(database).then((profile) => {
+        if (active) setUnit(profile.unit);
+      });
+      return () => {
+        active = false;
+      };
+    }, [database]),
+  );
   const [bar, setBar] = useState(45);
   const [plates, setPlates] = useState<number[]>([]);
   const total = totalWeight(bar, plates);
@@ -29,6 +43,7 @@ export default function PlatesScreen() {
             key={value}
             onPress={() => {
               setUnit(value);
+              void updateProfile(database, { unit: value });
               setBar(value === 'lb' ? barOptions.olympicLb : barOptions.olympicKg);
               setPlates([]);
             }}

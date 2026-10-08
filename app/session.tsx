@@ -1,12 +1,14 @@
 import * as Haptics from 'expo-haptics';
 import { useKeepAwake } from 'expo-keep-awake';
 import { router } from 'expo-router';
+import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { Stepper } from '@/components/Stepper';
 import { Text } from '@/components/Text';
+import { finishDraft, loadDraft, saveDraft } from '@/db/repository';
 import { sessionVolume } from '@/domain/session';
 import { useTrainingStore } from '@/state/training';
 import { radius, spacing } from '@/theme/tokens';
@@ -15,9 +17,31 @@ import { useAppTheme } from '@/theme/useAppTheme';
 export default function SessionScreen() {
   useKeepAwake();
   const theme = useAppTheme();
-  const { exercises, toggleSet, adjustSet, complete, notes, setNotes } = useTrainingStore();
+  const database = useSQLiteContext();
+  const { draft, setDraft, toggleSet, adjustSet, setNotes } = useTrainingStore();
+  const [ready, setReady] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [rest, setRest] = useState(0);
   const [restTarget, setRestTarget] = useState(0);
+  // Load the persisted draft once. Autosave only runs after this, so the load never writes back.
+  useEffect(() => {
+    void loadDraft(database).then((loaded) => {
+      if (!loaded) {
+        router.replace('/(tabs)');
+        return;
+      }
+      setDraft(loaded);
+      setReady(true);
+    });
+  }, [database, setDraft]);
+  useEffect(() => {
+    if (!ready || !draft) return;
+    saveDraft(database, draft).then(
+      () => setSaveError(''),
+      () => setSaveError('Could not save this set. Keep going and check storage.'),
+    );
+  }, [database, draft, ready]);
+  const exercises = useMemo(() => draft?.exercises ?? [], [draft]);
   useEffect(() => {
     if (rest <= 0) return;
     const timer = setTimeout(() => setRest((value) => Math.max(0, value - 1)), 1000);
@@ -37,7 +61,7 @@ export default function SessionScreen() {
         <Pressable onPress={() => router.back()}>
           <Text>Close</Text>
         </Pressable>
-        <Text variant="title">Full Body A</Text>
+        <Text variant="title">{draft?.name ?? 'Session'}</Text>
         <Text variant="number">
           {rest > 0
             ? `${Math.floor(rest / 60)}:${String(rest % 60).padStart(2, '0')}`
@@ -106,14 +130,14 @@ export default function SessionScreen() {
                 />
               ))}
           </View>
-          {exercise.id === 'squat' && (
+          {/barbell|squat|deadlift|bench|press/i.test(exercise.name) && (
             <Button onPress={() => router.push('/plates')}>Build plates</Button>
           )}
         </View>
       ))}
       <TextInput
         accessibilityLabel="Session notes"
-        value={notes}
+        value={draft?.notes ?? ''}
         onChangeText={setNotes}
         placeholder="Session notes"
         placeholderTextColor={theme.muted}
@@ -121,10 +145,18 @@ export default function SessionScreen() {
         style={[styles.notes, { color: theme.foreground, backgroundColor: theme.surface }]}
       />
       <Text>Volume {sessionVolume(exercises).toLocaleString()} lb</Text>
+      {saveError ? <Text>{saveError}</Text> : null}
       <Button
+        disabled={!draft}
         onPress={() => {
-          complete();
-          router.replace('/(tabs)/history');
+          if (!draft) return;
+          void finishDraft(database, draft).then(
+            () => {
+              setDraft(null);
+              router.replace('/(tabs)/history');
+            },
+            () => setSaveError('Could not finish the session. Your sets are still saved here.'),
+          );
         }}
       >
         Finish session

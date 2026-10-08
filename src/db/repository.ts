@@ -1,9 +1,18 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { exerciseLibrary } from '@/data/exercises';
-import { type ImportResult } from '@/domain/importExport';
+import { type ImportResult, type Unit } from '@/domain/importExport';
+import { type HistoryWorkout } from '@/domain/history';
+import {
+  fitSessionLength,
+  type ScheduledRoutine,
+  type StarterTemplate,
+  type TemplateExercise,
+} from '@/domain/plans';
+import { type SessionExercise, type SessionSet } from '@/domain/session';
 
 /** Single-device owner until accounts exist (P4). Every row is written under this id. */
 export const LOCAL_USER = 'local';
+const now = () => new Date().toISOString();
 
 export const EXPORT_TABLES = [
   'profiles',
@@ -28,15 +37,45 @@ export function newId(prefix = 'id') {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const slug = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
 
 const libraryByName = new Map(
   exerciseLibrary.map((exercise) => [exercise.name.toLowerCase(), exercise.id]),
 );
+const libraryById = new Map(exerciseLibrary.map((exercise) => [exercise.id, exercise]));
 
 /** Imported names that match the bundled library reuse its id; others become custom exercises. */
 export function resolveExerciseId(name: string) {
   return libraryByName.get(name.toLowerCase()) ?? `custom-${slug(name) || 'exercise'}`;
+}
+
+/** Writes a custom exercise row if the id is not in the bundled library. Idempotent. */
+async function ensureExercise(database: SQLiteDatabase, id: string, name: string) {
+  if (libraryById.has(id)) return;
+  await database.runAsync(
+    'INSERT OR IGNORE INTO custom_exercises (id,user_id,name,primary_muscles,secondary_muscles,instructions,updated_at) VALUES (?,?,?,?,?,?,?)',
+    id,
+    LOCAL_USER,
+    name,
+    '[]',
+    '[]',
+    '[]',
+    now(),
+  );
+}
+
+export async function exerciseInfo(database: SQLiteDatabase, id: string) {
+  const library = libraryById.get(id);
+  if (library) return { name: library.name, muscle: library.primaryMuscles[0] ?? 'other' };
+  const custom = await database.getFirstAsync<{ name: string }>(
+    'SELECT name FROM custom_exercises WHERE id = ?',
+    id,
+  );
+  return { name: custom?.name ?? id, muscle: 'other' };
 }
 
 export async function exportAllTables(database: SQLiteDatabase) {
@@ -46,28 +85,396 @@ export async function exportAllTables(database: SQLiteDatabase) {
   return tables;
 }
 
+// ---- profile and settings -------------------------------------------------
+
+export type Profile = { unit: Unit; sessionMinutes: 45 | 60 | 75 | 90 };
+
+export async function getProfile(database: SQLiteDatabase): Promise<Profile> {
+  const row = await database.getFirstAsync<{ unit: Unit; session_length: number }>(
+    'SELECT unit, session_length FROM profiles WHERE id = ? AND deleted_at IS NULL',
+    LOCAL_USER,
+  );
+  const minutes = row?.session_length;
+  return {
+    unit: row?.unit ?? 'lb',
+    sessionMinutes: minutes === 45 || minutes === 75 || minutes === 90 ? minutes : 60,
+  };
+}
+
+export async function updateProfile(database: SQLiteDatabase, patch: Partial<Profile>) {
+  const current = await getProfile(database);
+  const next = { ...current, ...patch };
+  await database.runAsync(
+    'INSERT INTO profiles (id,user_id,unit,session_length,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET unit = excluded.unit, session_length = excluded.session_length, updated_at = excluded.updated_at',
+    LOCAL_USER,
+    LOCAL_USER,
+    next.unit,
+    next.sessionMinutes,
+    now(),
+  );
+}
+
+export async function getSetting<T>(database: SQLiteDatabase, key: string): Promise<T | null> {
+  const row = await database.getFirstAsync<{ value: string }>(
+    'SELECT value FROM settings WHERE user_id = ? AND key = ? AND deleted_at IS NULL',
+    LOCAL_USER,
+    key,
+  );
+  return row ? (JSON.parse(row.value) as T | null) : null;
+}
+
+export async function setSetting(database: SQLiteDatabase, key: string, value: unknown) {
+  await database.runAsync(
+    'INSERT INTO settings (id,user_id,key,value,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at',
+    `setting-${key}`,
+    LOCAL_USER,
+    key,
+    JSON.stringify(value),
+    now(),
+  );
+}
+
+// ---- bodyweight -----------------------------------------------------------
+
+export type BodyweightEntry = { id: string; measuredAt: string; weight: number; unit: Unit };
+
+export async function listBodyweight(database: SQLiteDatabase): Promise<BodyweightEntry[]> {
+  const rows = await database.getAllAsync<{
+    id: string;
+    measured_at: string;
+    weight: number;
+    unit: Unit;
+  }>(
+    'SELECT id, measured_at, weight, unit FROM bodyweight WHERE user_id = ? AND deleted_at IS NULL ORDER BY measured_at ASC, rowid ASC',
+    LOCAL_USER,
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    measuredAt: row.measured_at,
+    weight: row.weight,
+    unit: row.unit,
+  }));
+}
+
+export async function addBodyweight(database: SQLiteDatabase, weight: number, unit: Unit) {
+  const stamp = now();
+  await database.runAsync(
+    'INSERT INTO bodyweight (id,user_id,measured_at,weight,unit,goal,updated_at) VALUES (?,?,?,?,?,NULL,?)',
+    newId('bw'),
+    LOCAL_USER,
+    stamp,
+    weight,
+    unit,
+    stamp,
+  );
+}
+
+// ---- session draft (in-flight workout) ------------------------------------
+
+export type DraftSet = SessionSet;
+export type DraftExercise = SessionExercise;
+export type SessionDraft = {
+  workoutId: string;
+  routineId?: string | undefined;
+  name: string;
+  startedAt: string;
+  notes: string;
+  exercises: DraftExercise[];
+};
+
+/**
+ * The in-flight session lives in one settings row so reason text and rest times survive
+ * a restart. Finishing it writes normalised rows to workouts and workout_sets.
+ */
+export async function loadDraft(database: SQLiteDatabase) {
+  return getSetting<SessionDraft>(database, 'activeSession');
+}
+
+export async function saveDraft(database: SQLiteDatabase, draft: SessionDraft | null) {
+  await setSetting(database, 'activeSession', draft);
+}
+
+export async function finishDraft(database: SQLiteDatabase, draft: SessionDraft) {
+  const completedAt = now();
+  await database.withTransactionAsync(async () => {
+    await database.runAsync(
+      'INSERT OR REPLACE INTO workouts (id,user_id,routine_id,name,started_at,completed_at,notes,updated_at) VALUES (?,?,?,?,?,?,?,?)',
+      draft.workoutId,
+      LOCAL_USER,
+      draft.routineId ?? null,
+      draft.name,
+      draft.startedAt,
+      completedAt,
+      draft.notes || null,
+      completedAt,
+    );
+    let order = 0;
+    for (const exercise of draft.exercises) {
+      await ensureExercise(database, exercise.id, exercise.name);
+      for (const set of exercise.sets) {
+        if (!set.done) continue;
+        await database.runAsync(
+          'INSERT INTO workout_sets (id,user_id,workout_id,exercise_id,weight,reps,seconds,rir,done,warmup,set_type,sort_order,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+          newId('set'),
+          LOCAL_USER,
+          draft.workoutId,
+          exercise.id,
+          set.weight,
+          set.reps,
+          null,
+          set.rir ?? null,
+          1,
+          set.setType === 'warmup' ? 1 : 0,
+          set.setType ?? 'normal',
+          order,
+          completedAt,
+        );
+        order += 1;
+      }
+    }
+    await saveDraft(database, null);
+  });
+}
+
+export async function listCompletedWorkouts(database: SQLiteDatabase): Promise<HistoryWorkout[]> {
+  const workouts = await database.getAllAsync<{ id: string; started_at: string }>(
+    'SELECT id, started_at FROM workouts WHERE user_id = ? AND completed_at IS NOT NULL AND deleted_at IS NULL ORDER BY started_at ASC',
+    LOCAL_USER,
+  );
+  const sets = await database.getAllAsync<{
+    workout_id: string;
+    exercise_id: string;
+    weight: number | null;
+    reps: number | null;
+  }>(
+    'SELECT workout_id, exercise_id, weight, reps FROM workout_sets WHERE user_id = ? AND done = 1 AND deleted_at IS NULL ORDER BY sort_order ASC',
+    LOCAL_USER,
+  );
+  const infoCache = new Map<string, Awaited<ReturnType<typeof exerciseInfo>>>();
+  const setsByWorkout = new Map<string, HistoryWorkout['sets']>();
+  for (const set of sets) {
+    if (!infoCache.has(set.exercise_id))
+      infoCache.set(set.exercise_id, await exerciseInfo(database, set.exercise_id));
+    const info = infoCache.get(set.exercise_id)!;
+    const bucket = setsByWorkout.get(set.workout_id) ?? [];
+    bucket.push({
+      exerciseId: set.exercise_id,
+      exerciseName: info.name,
+      muscle: info.muscle,
+      weight: set.weight ?? 0,
+      reps: set.reps ?? 0,
+      done: true,
+    });
+    setsByWorkout.set(set.workout_id, bucket);
+  }
+  return workouts.map((workout) => ({
+    id: workout.id,
+    date: workout.started_at,
+    sets: setsByWorkout.get(workout.id) ?? [],
+  }));
+}
+
+/** Most recent completed weight for an exercise, or undefined when there is no history. */
+export async function lastWeightFor(database: SQLiteDatabase, exerciseId: string) {
+  const row = await database.getFirstAsync<{ weight: number }>(
+    `SELECT ws.weight FROM workout_sets ws JOIN workouts w ON w.id = ws.workout_id
+     WHERE ws.exercise_id = ? AND ws.done = 1 AND ws.deleted_at IS NULL AND w.completed_at IS NOT NULL
+     ORDER BY w.started_at DESC, ws.sort_order DESC LIMIT 1`,
+    exerciseId,
+  );
+  return row?.weight ?? undefined;
+}
+
+// ---- plans ----------------------------------------------------------------
+
+const policyFor: Record<TemplateExercise['role'], string> = {
+  compound: 'linear',
+  accessory: 'double',
+  'core-rehab': 'double',
+};
+const restFor: Record<TemplateExercise['role'], number> = {
+  compound: 150,
+  accessory: 90,
+  'core-rehab': 60,
+};
+
+export type ActivePlanDay = { routineId: string; name: string; exerciseCount: number };
+
+/**
+ * Replaces the active plan with one routine per template day on a rotation.
+ * Previously active routines are soft-deleted, not removed.
+ */
+export async function saveActivePlan(
+  database: SQLiteDatabase,
+  template: StarterTemplate,
+  minutes: 45 | 60 | 75 | 90,
+) {
+  const stamp = now();
+  await database.withTransactionAsync(async () => {
+    const previous = await database.getAllAsync<{ id: string }>(
+      'SELECT id FROM routines WHERE user_id = ? AND template_key IS NOT NULL AND deleted_at IS NULL',
+      LOCAL_USER,
+    );
+    for (const { id } of previous) {
+      await database.runAsync(
+        'UPDATE routines SET deleted_at = ?, updated_at = ? WHERE id = ?',
+        stamp,
+        stamp,
+        id,
+      );
+      await database.runAsync(
+        'UPDATE routine_items SET deleted_at = ?, updated_at = ? WHERE routine_id = ?',
+        stamp,
+        stamp,
+        id,
+      );
+      await database.runAsync(
+        'UPDATE schedules SET deleted_at = ?, updated_at = ? WHERE routine_id = ?',
+        stamp,
+        stamp,
+        id,
+      );
+    }
+    for (const [dayIndex, day] of template.days.entries()) {
+      const routineId = newId('routine');
+      await database.runAsync(
+        'INSERT INTO routines (id,user_id,name,notes,template_key,updated_at) VALUES (?,?,?,?,?,?)',
+        routineId,
+        LOCAL_USER,
+        `${template.name} · Day ${dayIndex + 1}`,
+        null,
+        template.id,
+        stamp,
+      );
+      await database.runAsync(
+        'INSERT INTO schedules (id,user_id,routine_id,mode,weekday,rotation_order,updated_at) VALUES (?,?,?,?,?,?,?)',
+        newId('sched'),
+        LOCAL_USER,
+        routineId,
+        'rotation',
+        null,
+        dayIndex,
+        stamp,
+      );
+      for (const [order, item] of fitSessionLength(day, minutes).entries()) {
+        const exerciseId = resolveExerciseId(item.name);
+        await ensureExercise(database, exerciseId, item.name);
+        await database.runAsync(
+          'INSERT INTO routine_items (id,user_id,routine_id,exercise_id,sets,reps,rep_min,rep_max,seconds,policy,increment,rest_seconds,superset_group,set_type,sort_order,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+          newId('item'),
+          LOCAL_USER,
+          routineId,
+          exerciseId,
+          item.sets,
+          null,
+          item.repMin,
+          item.repMax,
+          null,
+          policyFor[item.role],
+          5,
+          restFor[item.role],
+          null,
+          'normal',
+          order,
+          stamp,
+        );
+      }
+    }
+  });
+}
+
+export async function loadActivePlan(database: SQLiteDatabase) {
+  const days = await database.getAllAsync<{ id: string; name: string; rotation_order: number }>(
+    `SELECT r.id, r.name, s.rotation_order FROM routines r
+     JOIN schedules s ON s.routine_id = r.id AND s.deleted_at IS NULL
+     WHERE r.user_id = ? AND r.template_key IS NOT NULL AND r.deleted_at IS NULL
+     ORDER BY s.rotation_order ASC`,
+    LOCAL_USER,
+  );
+  const completed = await database.getAllAsync<{ routine_id: string }>(
+    'SELECT routine_id FROM workouts WHERE user_id = ? AND routine_id IS NOT NULL AND completed_at IS NOT NULL AND deleted_at IS NULL ORDER BY started_at ASC',
+    LOCAL_USER,
+  );
+  const schedule: ScheduledRoutine[] = days.map((day) => ({
+    id: day.id,
+    mode: 'rotation',
+    rotationOrder: day.rotation_order,
+  }));
+  const planDays: ActivePlanDay[] = [];
+  for (const day of days) {
+    const count = await database.getFirstAsync<{ count: number }>(
+      'SELECT COUNT(*) AS count FROM routine_items WHERE routine_id = ? AND deleted_at IS NULL',
+      day.id,
+    );
+    planDays.push({ routineId: day.id, name: day.name, exerciseCount: count?.count ?? 0 });
+  }
+  return {
+    days: planDays,
+    schedule,
+    completedRoutineIds: completed.map((row) => row.routine_id),
+  };
+}
+
+/** Builds a session draft from a saved routine. Targets come from the plan, not the progression engine yet. */
+export async function draftFromRoutine(
+  database: SQLiteDatabase,
+  routineId: string,
+  name: string,
+): Promise<SessionDraft> {
+  const items = await database.getAllAsync<{
+    exercise_id: string;
+    sets: number;
+    rep_min: number | null;
+    rep_max: number | null;
+    rest_seconds: number;
+  }>(
+    'SELECT exercise_id, sets, rep_min, rep_max, rest_seconds FROM routine_items WHERE routine_id = ? AND deleted_at IS NULL ORDER BY sort_order ASC',
+    routineId,
+  );
+  const exercises: DraftExercise[] = [];
+  for (const item of items) {
+    const info = await exerciseInfo(database, item.exercise_id);
+    const reps = item.rep_min ?? 8;
+    const weight = (await lastWeightFor(database, item.exercise_id)) ?? 0;
+    const range = item.rep_max && item.rep_max !== reps ? `${reps}–${item.rep_max}` : `${reps}`;
+    exercises.push({
+      id: item.exercise_id,
+      name: info.name,
+      reason: `Plan ${item.sets}×${range}${weight ? ` · last time ${weight}` : ' · no history yet'}`,
+      restSeconds: item.rest_seconds,
+      sets: Array.from({ length: item.sets }, (_, index) => ({
+        id: `${item.exercise_id}-${index}`,
+        weight,
+        reps,
+        targetReps: reps,
+        done: false,
+      })),
+    });
+  }
+  return {
+    workoutId: newId('workout'),
+    routineId,
+    name,
+    startedAt: now(),
+    notes: '',
+    exercises,
+  };
+}
+
+// ---- imports --------------------------------------------------------------
+
 /**
  * Writes parsed import rows. Ids are derived from file content, so importing the
  * same file again is a no-op (OR IGNORE). Existing rows are never overwritten.
  */
 export async function saveImport(database: SQLiteDatabase, result: ImportResult) {
-  const now = new Date().toISOString();
+  const stamp = now();
   const workoutOrder = new Map<string, number>();
   let inserted = 0;
   await database.withTransactionAsync(async () => {
     for (const set of result.sets) {
       const exerciseId = resolveExerciseId(set.exerciseName);
-      if (exerciseId.startsWith('custom-'))
-        await database.runAsync(
-          'INSERT OR IGNORE INTO custom_exercises (id,user_id,name,primary_muscles,secondary_muscles,instructions,updated_at) VALUES (?,?,?,?,?,?,?)',
-          exerciseId,
-          LOCAL_USER,
-          set.exerciseName,
-          '[]',
-          '[]',
-          '[]',
-          now,
-        );
+      await ensureExercise(database, exerciseId, set.exerciseName);
       await database.runAsync(
         'INSERT OR IGNORE INTO workouts (id,user_id,name,started_at,completed_at,updated_at) VALUES (?,?,?,?,?,?)',
         set.workoutId,
@@ -75,7 +482,7 @@ export async function saveImport(database: SQLiteDatabase, result: ImportResult)
         set.workoutName,
         set.startedAt,
         set.startedAt,
-        now,
+        stamp,
       );
       const order = workoutOrder.get(set.workoutId) ?? 0;
       workoutOrder.set(set.workoutId, order + 1);
@@ -93,7 +500,7 @@ export async function saveImport(database: SQLiteDatabase, result: ImportResult)
         set.setType === 'warmup' ? 1 : 0,
         set.setType,
         order,
-        now,
+        stamp,
       );
       inserted += write.changes;
     }
