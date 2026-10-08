@@ -1,9 +1,11 @@
+import type { ExerciseMode } from '@/domain/exercises';
 import data from './exercises.json';
 
 export type LibraryExercise = {
   id: string;
   name: string;
   category: string;
+  mode: ExerciseMode;
   equipment: string;
   primaryMuscles: string[];
   secondaryMuscles: string[];

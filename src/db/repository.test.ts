@@ -287,20 +287,20 @@ describe('imports against SQLite', () => {
   });
 });
 
-describe('progression drives the session', () => {
-  /** Logs every set of the named slot as done, at the given load (time slots keep their hold). */
-  const completeSlot = (draft: SessionDraft, name: string, weight: number): SessionDraft => ({
-    ...draft,
-    exercises: draft.exercises.map((exercise) =>
-      exercise.name === name
-        ? {
-            ...exercise,
-            sets: exercise.sets.map((set) => ({ ...set, weight, done: true })),
-          }
-        : exercise,
-    ),
-  });
+/** Logs every set of the named slot as done, at the given load (time slots keep their hold). */
+const completeSlot = (draft: SessionDraft, name: string, weight: number): SessionDraft => ({
+  ...draft,
+  exercises: draft.exercises.map((exercise) =>
+    exercise.name === name
+      ? {
+          ...exercise,
+          sets: exercise.sets.map((set) => ({ ...set, weight, done: true })),
+        }
+      : exercise,
+  ),
+});
 
+describe('progression drives the session', () => {
   it('finishing a session feeds the next target for that exercise', async () => {
     const template = starterTemplates.find((item) => item.id === '5x5')!;
     await saveActivePlan(database, template, 60);
@@ -361,6 +361,61 @@ describe('progression drives the session', () => {
       restSeconds: 180,
       reason: 'Plan 4×3–5 · no history yet',
     });
+  });
+});
+
+describe('explicit modes and extended plans', () => {
+  it('template holds are stored as timed exercises', async () => {
+    const template = starterTemplates.find((item) => item.id === '5x5')!;
+    await saveActivePlan(database, template, 60);
+    expect((await getExercise(database, 'custom-plank'))?.mode).toBe('time');
+  });
+
+  it('RIR, back-off, training max and deload settings survive a restart', async () => {
+    const template = starterTemplates.find((item) => item.id === '5x5')!;
+    await saveActivePlan(database, template, 60);
+    const routineId = (await loadActivePlan(database)).days[0]!.routineId;
+    const [squat] = await listRoutineItems(database, routineId);
+    await saveRoutineItem(
+      database,
+      squat!.id,
+      {
+        ...squat!.plan,
+        policy: 'top-backoff',
+        backoffPercent: 0.15,
+        targetRir: 1,
+        trainingMax: 200,
+        deloadEvery: 4,
+      },
+      120,
+    );
+    await restart();
+    const [reloaded] = await listRoutineItems(database, routineId);
+    expect(reloaded?.plan).toMatchObject({
+      policy: 'top-backoff',
+      backoffPercent: 0.15,
+      targetRir: 1,
+      trainingMax: 200,
+      deloadEvery: 4,
+    });
+  });
+
+  it('a top set with back-offs builds lighter later sets', async () => {
+    const template = starterTemplates.find((item) => item.id === '5x5')!;
+    await saveActivePlan(database, template, 60);
+    const routineId = (await loadActivePlan(database)).days[0]!.routineId;
+    const [squat] = await listRoutineItems(database, routineId);
+    await saveRoutineItem(
+      database,
+      squat!.id,
+      { ...squat!.plan, policy: 'top-backoff', backoffPercent: 0.1, sets: 3 },
+      120,
+    );
+    const first = await draftFromRoutine(database, routineId, 'Day 1', 'lb');
+    await finishDraft(database, completeSlot(first, 'Back squat', 100));
+    const next = await draftFromRoutine(database, routineId, 'Day 1', 'lb');
+    const weights = next.exercises[0]!.sets.map((set) => set.weight);
+    expect(weights).toEqual([105, 95, 95]);
   });
 });
 

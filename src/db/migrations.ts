@@ -36,10 +36,16 @@ ALTER TABLE routine_items ADD COLUMN training_max REAL;
 ALTER TABLE routine_items ADD COLUMN deload_every INTEGER NOT NULL DEFAULT 0;
 `;
 
+// Template holds were created as custom exercises before modes were explicit.
+const migration004 = `
+UPDATE custom_exercises SET mode = 'time' WHERE mode = 'reps' AND id IN ('custom-plank', 'custom-side-plank', 'custom-farmer-carry');
+`;
+
 const migrations: { version: number; sql: string }[] = [
   { version: 1, sql: migration001 },
   { version: 2, sql: migration002 },
   { version: 3, sql: migration003 },
+  { version: 4, sql: migration004 },
 ];
 
 export async function migrate(database: SQLiteDatabase) {

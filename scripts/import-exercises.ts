@@ -1,5 +1,6 @@
 import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { libraryMode } from './exercise-modes';
 
 const source =
   'https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/data/exercises.json';
@@ -23,6 +24,7 @@ async function main() {
     id: exercise.id,
     name: exercise.name.trim(),
     category: exercise.body_part,
+    mode: libraryMode(exercise.id, exercise.body_part),
     equipment: exercise.equipment,
     primaryMuscles: [exercise.target],
     secondaryMuscles: exercise.secondary_muscles,

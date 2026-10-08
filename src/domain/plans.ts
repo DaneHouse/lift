@@ -1,9 +1,13 @@
+import type { ExerciseMode } from './exercises';
+
 export type TemplateExercise = {
   name: string;
   sets: number;
   repMin: number;
   repMax: number;
   role: 'compound' | 'accessory' | 'core-rehab';
+  /** Timed holds store seconds in repMin/repMax. */
+  mode: ExerciseMode;
 };
 export type StarterTemplate = { id: string; name: string; days: TemplateExercise[][] };
 
@@ -13,7 +17,12 @@ const ex = (
   repMin: number,
   repMax = repMin,
   role: TemplateExercise['role'] = 'accessory',
-): TemplateExercise => ({ name, sets, repMin, repMax, role });
+): TemplateExercise => ({ name, sets, repMin, repMax, role, mode: 'reps' });
+/** A timed hold; the range is in seconds. */
+const hold = (name: string, sets: number, secondsMin: number, secondsMax = secondsMin) => ({
+  ...ex(name, sets, secondsMin, secondsMax, 'core-rehab'),
+  mode: 'time' as const,
+});
 const push = [
   ex('Barbell bench press', 4, 5, 8, 'compound'),
   ex('Overhead press', 3, 6, 10, 'compound'),
@@ -39,13 +48,9 @@ const legs = [
   ex('Leg curl', 3, 10, 15),
   ex('Leg extension', 3, 10, 15),
   ex('Calf raise', 4, 10, 15),
-  ex('Side plank', 3, 30, 45, 'core-rehab'),
+  hold('Side plank', 3, 30, 45),
 ];
-const upper = [
-  ...push.slice(0, 3),
-  ...pull.slice(1, 4),
-  ex('Farmer carry', 3, 30, 45, 'core-rehab'),
-];
+const upper = [...push.slice(0, 3), ...pull.slice(1, 4), hold('Farmer carry', 3, 30, 45)];
 const lower = legs;
 const full = [
   legs[0]!,
@@ -63,7 +68,7 @@ const five = [
   ex('Pull-up', 3, 6, 10),
   ex('Lunge', 3, 8, 12),
   ex('Face pull', 3, 12, 15),
-  ex('Plank', 3, 30, 45, 'core-rehab'),
+  hold('Plank', 3, 30, 45),
 ];
 
 export const starterTemplates: StarterTemplate[] = [

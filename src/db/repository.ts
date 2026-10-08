@@ -8,7 +8,7 @@ import {
   type StarterTemplate,
   type TemplateExercise,
 } from '@/domain/plans';
-import { modeFor, type ExerciseMode } from '@/domain/exercises';
+import { type ExerciseMode } from '@/domain/exercises';
 import { defaultPlateSetup, type PlateSetup } from '@/domain/plates';
 import { type SessionExercise, type SessionSet } from '@/domain/session';
 import { defaultPlanFor, planForTemplateItem, type ExercisePlan } from '@/domain/targets';
@@ -63,16 +63,22 @@ export function resolveExerciseId(name: string) {
 }
 
 /** Writes a custom exercise row if the id is not in the bundled library. Idempotent. */
-async function ensureExercise(database: SQLiteDatabase, id: string, name: string) {
+async function ensureExercise(
+  database: SQLiteDatabase,
+  id: string,
+  name: string,
+  mode: ExerciseMode = 'reps',
+) {
   if (libraryById.has(id)) return;
   await database.runAsync(
-    'INSERT OR IGNORE INTO custom_exercises (id,user_id,name,primary_muscles,secondary_muscles,instructions,updated_at) VALUES (?,?,?,?,?,?,?)',
+    'INSERT OR IGNORE INTO custom_exercises (id,user_id,name,primary_muscles,secondary_muscles,instructions,mode,updated_at) VALUES (?,?,?,?,?,?,?,?)',
     id,
     LOCAL_USER,
     name,
     '[]',
     '[]',
     '[]',
+    mode,
     now(),
   );
 }
@@ -224,7 +230,12 @@ export async function finishDraft(database: SQLiteDatabase, draft: SessionDraft)
     );
     let order = 0;
     for (const exercise of draft.exercises) {
-      await ensureExercise(database, exercise.id, exercise.name);
+      await ensureExercise(
+        database,
+        exercise.id,
+        exercise.name,
+        exercise.kind === 'time' ? 'time' : 'reps',
+      );
       for (const set of exercise.sets) {
         if (!set.done) continue;
         const timed = exercise.kind === 'time';
@@ -358,8 +369,12 @@ export async function saveActivePlan(
       );
       for (const [order, item] of fitSessionLength(day, minutes).entries()) {
         const exerciseId = resolveExerciseId(item.name);
-        await ensureExercise(database, exerciseId, item.name);
-        const plan = planForTemplateItem(item, modeFor(item.name), unit);
+        await ensureExercise(database, exerciseId, item.name, item.mode);
+        const plan = planForTemplateItem(
+          item,
+          libraryById.get(exerciseId)?.mode ?? item.mode,
+          unit,
+        );
         await insertRoutineItem(database, {
           routineId,
           exerciseId,
@@ -409,7 +424,7 @@ export type RoutineItem = {
   id: string;
   exerciseId: string;
   name: string;
-  mode: ReturnType<typeof modeFor>;
+  mode: ExerciseMode;
   plan: ExercisePlan;
   restSeconds: number;
   order: number;
@@ -595,7 +610,7 @@ export async function saveImport(database: SQLiteDatabase, result: ImportResult)
   await database.withTransactionAsync(async () => {
     for (const set of result.sets) {
       const exerciseId = resolveExerciseId(set.exerciseName);
-      await ensureExercise(database, exerciseId, set.exerciseName);
+      await ensureExercise(database, exerciseId, set.exerciseName, set.seconds ? 'time' : 'reps');
       await database.runAsync(
         'INSERT OR IGNORE INTO workouts (id,user_id,name,started_at,completed_at,updated_at) VALUES (?,?,?,?,?,?)',
         set.workoutId,

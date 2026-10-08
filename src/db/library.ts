@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { exerciseLibrary } from '@/data/exercises';
-import { modeFor, type ExerciseMode } from '@/domain/exercises';
+import { type ExerciseMode } from '@/domain/exercises';
 import { LOCAL_USER, newId, now } from './common';
 import { getSetting, setSetting } from './settings';
 
@@ -27,7 +27,7 @@ export async function getExercise(
     return {
       id,
       name: library.name,
-      mode: modeFor(library.name, library.category),
+      mode: library.mode,
       primaryMuscles: library.primaryMuscles,
       secondaryMuscles: library.secondaryMuscles,
       equipment: library.equipment,
@@ -63,7 +63,7 @@ export async function getExercise(
 const libraryRecords: ExerciseRecord[] = exerciseLibrary.map((exercise) => ({
   id: exercise.id,
   name: exercise.name,
-  mode: modeFor(exercise.name, exercise.category),
+  mode: exercise.mode,
   primaryMuscles: exercise.primaryMuscles,
   secondaryMuscles: exercise.secondaryMuscles,
   equipment: exercise.equipment,
