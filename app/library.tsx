@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
@@ -13,13 +13,24 @@ import {
   toggleFavourite,
   type ExerciseRecord,
 } from '@/db/library';
-import { filterBrowsable, equipmentOptions, type BodyRegion } from '@/domain/library';
+import { newId } from '@/db/common';
+import { getProfile, getRestDefault } from '@/db/repository';
+import { buildSessionExercise } from '@/db/targets';
+import { equipmentOptions, filterBrowsable, type BodyRegion } from '@/domain/library';
+import { defaultPlanFor, swapPlan } from '@/domain/targets';
+import { useTrainingStore } from '@/state/training';
 import { radius, spacing } from '@/theme/tokens';
 import { useAppTheme } from '@/theme/useAppTheme';
 
+/**
+ * Opened from a live session with purpose=swap (replace one slot) or purpose=add (append).
+ * Without a purpose it is a plain browser; rows open the exercise detail.
+ */
 export default function LibraryScreen() {
   const theme = useAppTheme();
   const database = useSQLiteContext();
+  const params = useLocalSearchParams<{ purpose?: string; slot?: string }>();
+  const picking = params.purpose === 'swap' || params.purpose === 'add';
   const [items, setItems] = useState<ExerciseRecord[]>([]);
   const [favourites, setFavourites] = useState<string[]>([]);
   const [query, setQuery] = useState('');
@@ -61,6 +72,40 @@ export default function LibraryScreen() {
     setFavourites(await toggleFavourite(database, id));
   };
 
+  /** Swaps the chosen slot, or appends a new one, in the live session draft. */
+  const pick = async (exercise: ExerciseRecord) => {
+    const store = useTrainingStore.getState();
+    const draft = store.draft;
+    if (!draft) return;
+    const { unit } = await getProfile(database);
+    const reference = { id: exercise.id, name: exercise.name };
+    if (params.purpose === 'swap') {
+      const current = draft.exercises.find((slot) => slot.slotId === params.slot);
+      if (!current) return;
+      store.replaceSlot(
+        current.slotId,
+        await buildSessionExercise(database, {
+          slotId: current.slotId,
+          exercise: reference,
+          plan: swapPlan(current.plan, exercise.mode, unit),
+          restSeconds: current.restSeconds,
+          unit,
+        }),
+      );
+    } else {
+      store.appendSlot(
+        await buildSessionExercise(database, {
+          slotId: newId('slot'),
+          exercise: reference,
+          plan: defaultPlanFor(exercise.mode, unit),
+          restSeconds: await getRestDefault(database),
+          unit,
+        }),
+      );
+    }
+    router.back();
+  };
+
   return (
     <Screen scroll={false}>
       <FlatList
@@ -73,11 +118,22 @@ export default function LibraryScreen() {
           <View style={styles.header}>
             <View style={styles.titleRow}>
               <Pressable onPress={() => router.back()} accessibilityRole="button">
-                <Text>Back</Text>
+                <Text>{picking ? 'Cancel' : 'Back'}</Text>
               </Pressable>
-              <Button onPress={() => router.push('/exercise-edit')}>New custom</Button>
+              {picking ? null : (
+                <Button onPress={() => router.push('/exercise-edit')}>New custom</Button>
+              )}
             </View>
-            <Text variant="display">Library</Text>
+            <Text variant="display">
+              {params.purpose === 'swap'
+                ? 'Swap for'
+                : params.purpose === 'add'
+                  ? 'Add exercise'
+                  : 'Library'}
+            </Text>
+            {picking ? (
+              <Text style={{ color: theme.muted }}>Tap an exercise to put it in this session.</Text>
+            ) : null}
             <TextInput
               accessibilityLabel="Search exercises"
               value={query}
@@ -123,7 +179,7 @@ export default function LibraryScreen() {
         }
         renderItem={({ item }) => (
           <Pressable
-            onPress={() => router.push(`/exercise/${item.id}`)}
+            onPress={() => (picking ? void pick(item) : router.push(`/exercise/${item.id}`))}
             accessibilityRole="button"
             style={[styles.row, { borderBottomColor: theme.divider }]}
           >

@@ -10,7 +10,8 @@ import { Stepper } from '@/components/Stepper';
 import { Text } from '@/components/Text';
 import { finishDraft, getProfile, loadDraft, saveDraft } from '@/db/repository';
 import { type Unit } from '@/domain/importExport';
-import { sessionVolume } from '@/domain/session';
+import { sessionVolume, type SessionExercise } from '@/domain/session';
+import { canChangeSlot } from '@/domain/sessionDraft';
 import { useTrainingStore } from '@/state/training';
 import { radius, spacing } from '@/theme/tokens';
 import { useAppTheme } from '@/theme/useAppTheme';
@@ -36,15 +37,18 @@ export default function SessionScreen() {
   useKeepAwake();
   const theme = useAppTheme();
   const database = useSQLiteContext();
-  const { draft, setDraft, toggleSet, adjustSet, setNotes, setRestEndsAt } = useTrainingStore();
+  const { draft, setDraft, toggleSet, adjustSet, setNotes, setRestEndsAt, moveSlot, setSkipped } =
+    useTrainingStore();
   const [ready, setReady] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const rest = useRemainingSeconds(draft?.restEndsAt);
   const [unit, setUnit] = useState<Unit>('lb');
+  const rest = useRemainingSeconds(draft?.restEndsAt);
+  const weightStep = unit === 'kg' ? 2.5 : 5;
+
   useEffect(() => {
     void getProfile(database).then((profile) => setUnit(profile.unit));
   }, [database]);
-  const weightStep = unit === 'kg' ? 2.5 : 5;
+
   // Load the persisted draft once. Autosave only runs after this, so the load never writes back.
   useEffect(() => {
     void loadDraft(database).then((loaded) => {
@@ -63,7 +67,7 @@ export default function SessionScreen() {
       () => setSaveError('Could not save this set. Keep going and check storage.'),
     );
   }, [database, draft, ready]);
-  const exercises = useMemo(() => draft?.exercises ?? [], [draft]);
+
   // Fire the rest-end haptic only when a running rest reaches zero while this screen is open.
   const previousRest = useRef(rest);
   useEffect(() => {
@@ -71,20 +75,24 @@ export default function SessionScreen() {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     previousRest.current = rest;
   }, [rest]);
-  /** Moves the stored end time; never before now, so a skipped-past rest just ends. */
+
+  const exercises = useMemo(() => draft?.exercises ?? [], [draft]);
+  const completed = useMemo(
+    () => exercises.flatMap((exercise) => exercise.sets).filter((set) => set.done).length,
+    [exercises],
+  );
+
+  /** Moves the stored end time; never before now, so a rest that has passed simply ends. */
   const shiftRest = (seconds: number) => {
     const current = Date.parse(draft?.restEndsAt ?? '') || Date.now();
     const next = Math.max(Date.now(), current + seconds * 1000);
     setRestEndsAt(new Date(next).toISOString());
   };
-  const completed = useMemo(
-    () => exercises.flatMap((exercise) => exercise.sets).filter((set) => set.done).length,
-    [exercises],
-  );
+
   return (
     <Screen>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()}>
+        <Pressable onPress={() => router.back()} accessibilityRole="button">
           <Text>Close</Text>
         </Pressable>
         <Text variant="title">{draft?.name ?? 'Session'}</Text>
@@ -104,73 +112,37 @@ export default function SessionScreen() {
           </View>
         </View>
       )}
-      {exercises.map((exercise) => (
-        <View key={exercise.slotId} style={[styles.exercise, { borderTopColor: theme.divider }]}>
-          <Text variant="title">{exercise.name}</Text>
-          <Text style={{ color: theme.muted }}>{exercise.reason}</Text>
-          {exercise.sets.map((workoutSet, index) => (
-            <View key={workoutSet.id} style={styles.set}>
-              <Text>{index + 1}</Text>
-              {exercise.kind === 'time' ? (
-                <Stepper
-                  value={workoutSet.seconds ?? 0}
-                  step={5}
-                  suffix="sec"
-                  onChange={(delta) => adjustSet(exercise.slotId, workoutSet.id, 'seconds', delta)}
-                />
-              ) : (
-                <>
-                  <Stepper
-                    value={workoutSet.weight}
-                    step={weightStep}
-                    suffix={unit}
-                    onChange={(delta) => adjustSet(exercise.slotId, workoutSet.id, 'weight', delta)}
-                  />
-                  <Stepper
-                    value={workoutSet.reps}
-                    suffix="reps"
-                    onChange={(delta) => adjustSet(exercise.slotId, workoutSet.id, 'reps', delta)}
-                  />
-                </>
-              )}
-              <Pressable
-                accessibilityLabel={`Log set ${index + 1}`}
-                onPress={() => {
-                  toggleSet(exercise.slotId, workoutSet.id);
-                  if (!workoutSet.done) {
-                    setRestEndsAt(endsIn(exercise.restSeconds));
-                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  }
-                }}
-                style={[
-                  styles.check,
-                  { backgroundColor: workoutSet.done ? theme.foreground : theme.surface },
-                ]}
-              >
-                <Text style={{ color: workoutSet.done ? theme.background : theme.foreground }}>
-                  ✓
-                </Text>
-              </Pressable>
-            </View>
-          ))}
-          <View style={styles.rir}>
-            <Text>RIR optional</Text>
-            {exercise.sets
-              .filter((set) => set.done)
-              .slice(-1)
-              .map((set) => (
-                <Stepper
-                  key={set.id}
-                  value={set.rir ?? 0}
-                  onChange={(delta) => adjustSet(exercise.slotId, set.id, 'rir', delta)}
-                />
-              ))}
-          </View>
-          {/barbell|squat|deadlift|bench|press/i.test(exercise.name) && (
-            <Button onPress={() => router.push('/plates')}>Build plates</Button>
-          )}
-        </View>
+      {exercises.map((exercise, position) => (
+        <ExerciseCard
+          key={exercise.slotId}
+          exercise={exercise}
+          first={position === 0}
+          last={position === exercises.length - 1}
+          unit={unit}
+          weightStep={weightStep}
+          theme={theme}
+          onToggle={(setId) => {
+            const current = exercise.sets.find((set) => set.id === setId);
+            toggleSet(exercise.slotId, setId);
+            if (current && !current.done) {
+              setRestEndsAt(endsIn(exercise.restSeconds));
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            }
+          }}
+          onAdjust={(setId, field, delta) => adjustSet(exercise.slotId, setId, field, delta)}
+          onMove={(direction) => moveSlot(exercise.slotId, direction)}
+          onSkip={(skipped) => setSkipped(exercise.slotId, skipped)}
+          onSwap={() =>
+            router.push({
+              pathname: '/library',
+              params: { purpose: 'swap', slot: exercise.slotId },
+            })
+          }
+        />
       ))}
+      <Button onPress={() => router.push({ pathname: '/library', params: { purpose: 'add' } })}>
+        Add exercise
+      </Button>
       <TextInput
         accessibilityLabel="Session notes"
         value={draft?.notes ?? ''}
@@ -203,10 +175,126 @@ export default function SessionScreen() {
   );
 }
 
+function ExerciseCard({
+  exercise,
+  first,
+  last,
+  unit,
+  weightStep,
+  theme,
+  onToggle,
+  onAdjust,
+  onMove,
+  onSkip,
+  onSwap,
+}: {
+  exercise: SessionExercise;
+  first: boolean;
+  last: boolean;
+  unit: Unit;
+  weightStep: number;
+  theme: ReturnType<typeof useAppTheme>;
+  onToggle: (setId: string) => void;
+  onAdjust: (setId: string, field: 'weight' | 'reps' | 'rir' | 'seconds', delta: number) => void;
+  onMove: (direction: -1 | 1) => void;
+  onSkip: (skipped: boolean) => void;
+  onSwap: () => void;
+}) {
+  const changeable = canChangeSlot(exercise);
+  const timed = exercise.kind === 'time';
+  return (
+    <View style={[styles.exercise, { borderTopColor: theme.divider }]}>
+      <Pressable onPress={() => router.push(`/exercise/${exercise.id}`)} accessibilityRole="link">
+        <Text variant="title">{exercise.name}</Text>
+      </Pressable>
+      <Text style={{ color: theme.muted }}>
+        {exercise.skipped ? 'Skipped for today' : exercise.reason}
+      </Text>
+      <View style={styles.row}>
+        {!first && <ActionText label="Up" onPress={() => onMove(-1)} />}
+        {!last && <ActionText label="Down" onPress={() => onMove(1)} />}
+        {changeable && <ActionText label="Swap" onPress={onSwap} />}
+        {changeable && (
+          <ActionText
+            label={exercise.skipped ? 'Unskip' : 'Skip'}
+            onPress={() => onSkip(!exercise.skipped)}
+          />
+        )}
+      </View>
+      {!exercise.skipped &&
+        exercise.sets.map((workoutSet, index) => (
+          <View key={workoutSet.id} style={styles.set}>
+            <Text>{index + 1}</Text>
+            {timed ? (
+              <Stepper
+                value={workoutSet.seconds ?? 0}
+                step={5}
+                suffix="sec"
+                onChange={(delta) => onAdjust(workoutSet.id, 'seconds', delta)}
+              />
+            ) : (
+              <>
+                <Stepper
+                  value={workoutSet.weight}
+                  step={weightStep}
+                  suffix={unit}
+                  onChange={(delta) => onAdjust(workoutSet.id, 'weight', delta)}
+                />
+                <Stepper
+                  value={workoutSet.reps}
+                  suffix="reps"
+                  onChange={(delta) => onAdjust(workoutSet.id, 'reps', delta)}
+                />
+              </>
+            )}
+            <Pressable
+              accessibilityLabel={`Log set ${index + 1}`}
+              onPress={() => onToggle(workoutSet.id)}
+              style={[
+                styles.check,
+                { backgroundColor: workoutSet.done ? theme.foreground : theme.surface },
+              ]}
+            >
+              <Text style={{ color: workoutSet.done ? theme.background : theme.foreground }}>
+                ✓
+              </Text>
+            </Pressable>
+          </View>
+        ))}
+      {!exercise.skipped && !timed && (
+        <View style={styles.rir}>
+          <Text>RIR optional</Text>
+          {exercise.sets
+            .filter((set) => set.done)
+            .slice(-1)
+            .map((set) => (
+              <Stepper
+                key={set.id}
+                value={set.rir ?? 0}
+                onChange={(delta) => onAdjust(set.id, 'rir', delta)}
+              />
+            ))}
+        </View>
+      )}
+      {!exercise.skipped && /barbell|squat|deadlift|bench|press/i.test(exercise.name) && (
+        <Button onPress={() => router.push('/plates')}>Build plates</Button>
+      )}
+    </View>
+  );
+}
+
+function ActionText({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" hitSlop={8}>
+      <Text variant="label">{label}</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   rest: { gap: spacing.sm, padding: spacing.md, borderRadius: radius.md },
-  row: { flexDirection: 'row', gap: spacing.sm },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, alignItems: 'center' },
   exercise: { paddingTop: spacing.lg, borderTopWidth: StyleSheet.hairlineWidth, gap: spacing.sm },
   set: {
     flexDirection: 'row',
