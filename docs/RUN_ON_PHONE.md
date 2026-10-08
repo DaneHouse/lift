@@ -77,16 +77,7 @@ On the iPhone: **Settings → General → VPN & Device Management**, tap your Ap
 
 ## Alternative: EAS development build
 
-Use this only if the local build fails and you want a build made on Expo's servers.
-
-Not set up yet. This repo has no `eas.json` and no EAS project link. Setting it up means:
-
-1. `npx eas-cli login` with an Expo account.
-2. `npx eas-cli build:configure` (creates `eas.json` and an EAS project ID). Review the file, then commit it.
-3. Register the iPhone with `npx eas-cli device:create`. This needs a paid Apple Developer Program membership. Enrolling is Kassra's decision.
-4. `npx eas-cli build --profile development --platform ios`, then install the build from the link EAS prints.
-
-EAS uploads the project to Expo's servers. That is an outbound step, so Kassra approves it first.
+Use this when the local build fails or the Mac has no space for Xcode builds. `eas.json` is in the repo. The exact commands are in `docs/EAS_BUILD.md`. It needs a paid Apple Developer Program membership and uploads the project to Expo's servers, so Kassra approves it first.
 
 ## Troubleshooting
 
