@@ -72,9 +72,7 @@ export default function DataScreen() {
         <Button disabled={!csv.trim() || busy} onPress={() => void runImport()}>
           Import CSV
         </Button>
-        <Text style={{ color: theme.muted }}>
-          Importing the same file twice adds nothing new.
-        </Text>
+        <Text style={{ color: theme.muted }}>Importing the same file twice adds nothing new.</Text>
       </Section>
       <Section title="Export">
         <Button disabled={busy} onPress={() => void runExport()}>

@@ -60,7 +60,7 @@ If you prefer to build in Xcode, press the Run button with your iPhone chosen as
 
 ## 6. Trust the developer on the phone (first install only)
 
-On the iPhone: **Settings → General → VPN & Device Management**, tap your Apple ID under *Developer App*, then tap **Trust**. Open LIFT from the home screen.
+On the iPhone: **Settings → General → VPN & Device Management**, tap your Apple ID under _Developer App_, then tap **Trust**. Open LIFT from the home screen.
 
 ## 7. Every day after that
 
@@ -90,11 +90,11 @@ EAS uploads the project to Expo's servers. That is an outbound step, so Kassra a
 
 ## Troubleshooting
 
-| Symptom | Fix |
-|---|---|
-| "No device found" | Unlock the phone, tap Trust, confirm the cable. Check Developer Mode. |
-| "Developer Mode disabled" | Settings → Privacy & Security → Developer Mode, then restart. |
-| "Unable to install" / signing error | Step 4: pick the Personal Team. Check the bundle ID. |
-| "Untrusted Developer" on launch | Step 6. |
-| App opens but says it cannot connect to Metro | Start `npx expo start --dev-client`; both devices on the same Wi-Fi. |
-| Build fails after an Expo or Xcode update | `npx expo prebuild --platform ios --clean`, then redo step 4. |
+| Symptom                                       | Fix                                                                   |
+| --------------------------------------------- | --------------------------------------------------------------------- |
+| "No device found"                             | Unlock the phone, tap Trust, confirm the cable. Check Developer Mode. |
+| "Developer Mode disabled"                     | Settings → Privacy & Security → Developer Mode, then restart.         |
+| "Unable to install" / signing error           | Step 4: pick the Personal Team. Check the bundle ID.                  |
+| "Untrusted Developer" on launch               | Step 6.                                                               |
+| App opens but says it cannot connect to Metro | Start `npx expo start --dev-client`; both devices on the same Wi-Fi.  |
+| Build fails after an Expo or Xcode update     | `npx expo prebuild --platform ios --clean`, then redo step 4.         |

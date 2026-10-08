@@ -61,10 +61,7 @@ export default function History() {
   );
 
   const workouts = useMemo(() => loaded?.workouts ?? [], [loaded]);
-  const heatmap = useMemo(
-    () => calendarHeatmap(workouts, localDayKey(new Date())),
-    [workouts],
-  );
+  const heatmap = useMemo(() => calendarHeatmap(workouts, localDayKey(new Date())), [workouts]);
   const volume = useMemo(() => muscleVolume(workouts), [workouts]);
   const topMuscle = Object.entries(volume).sort((a, b) => b[1] - a[1])[0]?.[0] as
     | BodyRegion
