@@ -1,0 +1,40 @@
+export type SessionSet = {
+  id: string;
+  weight: number;
+  reps: number;
+  targetReps: number;
+  rir?: number | undefined;
+  done: boolean;
+  warmup?: boolean | undefined;
+  setType?: 'normal' | 'warmup' | 'drop' | undefined;
+};
+export type SessionExercise = {
+  id: string;
+  name: string;
+  reason: string;
+  restSeconds: number;
+  sets: SessionSet[];
+};
+
+export function adjustNumber(value: number, delta: number, minimum = 0) {
+  return Math.max(minimum, Math.round((value + delta) * 100) / 100);
+}
+export function isPersonalRecord(
+  weight: number,
+  reps: number,
+  prior: { weight: number; reps: number }[],
+) {
+  const score = estimatedOneRepMax(weight, reps);
+  return (
+    prior.length === 0 || prior.every((set) => estimatedOneRepMax(set.weight, set.reps) < score)
+  );
+}
+export function estimatedOneRepMax(weight: number, reps: number) {
+  return reps <= 1 ? weight : weight * (1 + reps / 30);
+}
+export function sessionVolume(exercises: SessionExercise[]) {
+  return exercises
+    .flatMap((exercise) => exercise.sets)
+    .filter((set) => set.done)
+    .reduce((sum, set) => sum + set.weight * set.reps, 0);
+}
