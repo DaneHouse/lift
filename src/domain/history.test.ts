@@ -49,3 +49,15 @@ describe('history statistics', () => {
   it('aggregates completed volume by muscle', () =>
     expect(muscleVolume(workouts)).toEqual({ 'upper legs': 1025 }));
 });
+
+describe('regressions', () => {
+  it('buckets an evening workout under the local calendar day', () => {
+    const evening = new Date(2026, 9, 1, 21, 30);
+    const heatmap = calendarHeatmap(
+      [{ id: 'x', date: evening.toISOString(), sets: [] }],
+      '2026-10-01',
+      3,
+    );
+    expect(heatmap.find((day) => day.count > 0)?.date).toBe('2026-10-01');
+  });
+});

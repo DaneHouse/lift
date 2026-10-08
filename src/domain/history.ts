@@ -10,11 +10,29 @@ export type HistorySet = {
 };
 export type HistoryWorkout = { id: string; date: string; sets: HistorySet[] };
 
-export function calendarHeatmap(workouts: HistoryWorkout[], endDate: string, days = 84) {
+const pad = (value: number) => String(value).padStart(2, '0');
+
+/** Local calendar day as YYYY-MM-DD. */
+export function localDayKey(date: Date) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** Calendar dates pass through unchanged; instants are bucketed by the device's local day. */
+function dayKeyOf(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : localDayKey(new Date(value));
+}
+
+export function calendarHeatmap(
+  workouts: HistoryWorkout[],
+  endDate: string = localDayKey(new Date()),
+  days = 84,
+) {
   const end = new Date(`${endDate}T12:00:00Z`);
   const counts = new Map<string, number>();
-  for (const workout of workouts)
-    counts.set(workout.date.slice(0, 10), (counts.get(workout.date.slice(0, 10)) ?? 0) + 1);
+  for (const workout of workouts) {
+    const key = dayKeyOf(workout.date);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
   return Array.from({ length: days }, (_, index) => {
     const date = new Date(end);
     date.setUTCDate(end.getUTCDate() - (days - index - 1));

@@ -129,3 +129,12 @@ describe('JSON export', () => {
     expect(parsed.tables.workouts).toEqual([{ id: '1' }]);
   });
 });
+
+describe('date-only rows', () => {
+  it('reads a calendar date as local midnight, not UTC midnight', () => {
+    const csv = 'Date,Exercise,Category,Weight,Reps\n2026-10-01,Squat,Legs,100,5';
+    expect(importWorkoutCsv(csv, { unit: 'lb' }).sets[0]?.startedAt).toBe(
+      new Date(2026, 9, 1).toISOString(),
+    );
+  });
+});

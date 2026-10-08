@@ -122,3 +122,31 @@ describe('progression policies', () => {
   it('provides category defaults', () =>
     expect(defaultPolicy('rehab')).toEqual({ policy: 'double', repMin: 12, repMax: 20 }));
 });
+
+describe('regressions', () => {
+  it('double progression with no logged sets starts at the bottom of the range', () => {
+    const target = doubleProgression({
+      weight: 50,
+      reps: 8,
+      sets: 3,
+      increment: 2.5,
+      repMin: 8,
+      repMax: 12,
+      history: [{ date: '2026-10-01', sets: [] }],
+    });
+    expect(target.reps).toBe(8);
+    expect(target.reason).not.toMatch(/Infinity/);
+  });
+  it('time progression does not count a session with fewer logged sets than targeted', () => {
+    const target = timeProgression({
+      weight: 0,
+      reps: 0,
+      sets: 3,
+      increment: 0,
+      seconds: 30,
+      secondsIncrement: 5,
+      history: [{ date: '2026-10-01', sets: [{ weight: 0, completed: true, seconds: 30 }] }],
+    });
+    expect(target.seconds).toBe(30);
+  });
+});

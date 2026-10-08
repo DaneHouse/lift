@@ -24,6 +24,7 @@ export function isPersonalRecord(
   reps: number,
   prior: { weight: number; reps: number }[],
 ) {
+  if (reps <= 0) return false;
   const score = estimatedOneRepMax(weight, reps);
   return (
     prior.length === 0 || prior.every((set) => estimatedOneRepMax(set.weight, set.reps) < score)

@@ -72,6 +72,13 @@ function parseNumber(text: string): number | null {
 
 function parseDate(text: string): string | null {
   if (!text) return null;
+  const calendar = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (calendar) {
+    // A bare date is a local day. new Date('YYYY-MM-DD') would mean UTC midnight.
+    const [year, month, day] = [Number(calendar[1]), Number(calendar[2]), Number(calendar[3])];
+    const local = new Date(year, month - 1, day);
+    return local.getDate() === day ? local.toISOString() : null;
+  }
   const normalized = /^\d{4}-\d{2}-\d{2} \d/.test(text) ? text.replace(' ', 'T') : text;
   const date = new Date(normalized);
   return Number.isNaN(date.valueOf()) ? null : date.toISOString();

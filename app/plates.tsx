@@ -6,7 +6,13 @@ import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { getProfile, updateProfile } from '@/db/repository';
-import { barOptions, plateOptions, platesForTarget, totalWeight } from '@/domain/plates';
+import {
+  barOptions,
+  plateOptions,
+  platesForTarget,
+  reverseTarget,
+  totalWeight,
+} from '@/domain/plates';
 import { radius, spacing } from '@/theme/tokens';
 import { useAppTheme } from '@/theme/useAppTheme';
 
@@ -28,7 +34,10 @@ export default function PlatesScreen() {
   const [bar, setBar] = useState(45);
   const [plates, setPlates] = useState<number[]>([]);
   const total = totalWeight(bar, plates);
-  const reverse = useMemo(() => platesForTarget(225, bar, plateOptions[unit]), [bar, unit]);
+  const reverse = useMemo(
+    () => platesForTarget(reverseTarget[unit], bar, plateOptions[unit]),
+    [bar, unit],
+  );
   return (
     <Screen>
       <View style={styles.header}>
@@ -44,7 +53,7 @@ export default function PlatesScreen() {
             onPress={() => {
               setUnit(value);
               void updateProfile(database, { unit: value });
-              setBar(value === 'lb' ? barOptions.olympicLb : barOptions.olympicKg);
+              setBar(barOptions[value].olympic);
               setPlates([]);
             }}
           >
@@ -81,7 +90,7 @@ export default function PlatesScreen() {
           </Pressable>
         ))}
       </View>
-      <Text variant="title">Reverse: 225 {unit}</Text>
+      <Text variant="title">Reverse: {reverseTarget[unit]} {unit}</Text>
       <Text>
         {reverse.platesPerSide.length ? reverse.platesPerSide.join(' · ') : 'Bar only'} per side
       </Text>

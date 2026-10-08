@@ -84,9 +84,11 @@ export function doubleProgression(
       sets: input.sets,
       reason: `Hit top of range ${input.repMax} → +${input.increment}, reset to ${input.repMin}`,
     };
-  const minimum = performance
-    ? Math.min(...performance.sets.slice(0, input.sets).map((set) => set.reps ?? 0))
-    : input.repMin - 1;
+  // An empty log has no minimum; treat it like no history so the target starts at the bottom.
+  const minimum =
+    performance && performance.sets.length > 0
+      ? Math.min(...performance.sets.slice(0, input.sets).map((set) => set.reps ?? 0))
+      : input.repMin - 1;
   const next = Math.min(input.repMax, Math.max(input.repMin, minimum + 1));
   return {
     weight: input.weight,
@@ -172,6 +174,7 @@ export function timeProgression(
   const performance = last(input.history);
   const hit =
     !!performance &&
+    performance.sets.length >= input.sets &&
     performance.sets
       .slice(0, input.sets)
       .every((set) => set.completed && (set.seconds ?? 0) >= input.seconds);

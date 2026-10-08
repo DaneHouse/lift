@@ -23,3 +23,10 @@ describe('guided session logic', () => {
       ]),
     ).toBe(500));
 });
+
+describe('regressions', () => {
+  it('a set with no reps is never a personal record', () => {
+    expect(isPersonalRecord(100, 0, [])).toBe(false);
+    expect(isPersonalRecord(100, 0, [{ weight: 90, reps: 5 }])).toBe(false);
+  });
+});

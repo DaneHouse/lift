@@ -20,6 +20,7 @@ import {
 import {
   calendarHeatmap,
   exerciseHistory,
+  localDayKey,
   muscleVolume,
   personalRecord,
   type HistoryWorkout,
@@ -61,7 +62,7 @@ export default function History() {
 
   const workouts = useMemo(() => loaded?.workouts ?? [], [loaded]);
   const heatmap = useMemo(
-    () => calendarHeatmap(workouts, new Date().toISOString().slice(0, 10)),
+    () => calendarHeatmap(workouts, localDayKey(new Date())),
     [workouts],
   );
   const volume = useMemo(() => muscleVolume(workouts), [workouts]);
