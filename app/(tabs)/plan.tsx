@@ -113,6 +113,7 @@ export default function Plan() {
         </Section>
       ) : null}
       <Button onPress={() => void savePlan()}>Use this plan</Button>
+      <Button onPress={() => router.push('/library')}>Exercise library</Button>
       {status ? <Text>{status}</Text> : null}
       <Text>Schedule by weekday or use rotation to run the next undone session.</Text>
     </Screen>

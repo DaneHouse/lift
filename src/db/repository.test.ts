@@ -28,6 +28,14 @@ import { importWorkoutCsv } from '@/domain/importExport';
 import { nextRoutine, starterTemplates } from '@/domain/plans';
 import { type ExercisePlan } from '@/domain/targets';
 import {
+  deleteCustomExercise,
+  getExercise,
+  getFavourites,
+  listAllExercises,
+  saveCustomExercise,
+  toggleFavourite,
+} from './library';
+import {
   getPlateSetup,
   getRestDefault,
   listRoutineItems,
@@ -377,5 +385,55 @@ describe('rest timer and plates survive restart', () => {
       stack: [25, 10],
     });
     expect((await getPlateSetup(database, 'lb')).inventory).toEqual([45, 35, 25, 10, 5, 2.5]);
+  });
+});
+
+describe('exercise library', () => {
+  it('lists the bundled library and live custom exercises only', async () => {
+    const all = await listAllExercises(database);
+    expect(all.length).toBeGreaterThan(1300);
+    const id = await saveCustomExercise(database, {
+      name: 'Landmine press',
+      primaryMuscles: ['shoulders'],
+      secondaryMuscles: ['triceps'],
+      equipment: 'barbell',
+      mode: 'reps',
+    });
+    expect((await listAllExercises(database)).at(-1)).toMatchObject({ id, custom: true });
+    await deleteCustomExercise(database, id);
+    expect((await listAllExercises(database)).some((item) => item.id === id)).toBe(false);
+    // The row stays so history can still show its name.
+    expect((await getExercise(database, id))?.name).toBe('Landmine press');
+  });
+
+  it('edits a custom exercise and keeps its mode after restart', async () => {
+    const id = await saveCustomExercise(database, {
+      name: 'Hollow hold',
+      primaryMuscles: ['abs'],
+      secondaryMuscles: [],
+      equipment: 'body weight',
+      mode: 'reps',
+    });
+    await saveCustomExercise(
+      database,
+      {
+        name: 'Hollow hold',
+        primaryMuscles: ['abs'],
+        secondaryMuscles: [],
+        equipment: 'body weight',
+        mode: 'time',
+      },
+      id,
+    );
+    await restart();
+    expect(await getExercise(database, id)).toMatchObject({ mode: 'time', custom: true });
+  });
+
+  it('favourites toggle and survive restart', async () => {
+    await toggleFavourite(database, '0001');
+    await toggleFavourite(database, 'custom-x');
+    await toggleFavourite(database, 'custom-x');
+    await restart();
+    expect(await getFavourites(database)).toEqual(['0001']);
   });
 });

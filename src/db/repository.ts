@@ -8,13 +8,16 @@ import {
   type StarterTemplate,
   type TemplateExercise,
 } from '@/domain/plans';
-import { modeFor } from '@/domain/exercises';
+import { modeFor, type ExerciseMode } from '@/domain/exercises';
 import { defaultPlateSetup, type PlateSetup } from '@/domain/plates';
 import { type SessionExercise, type SessionSet } from '@/domain/session';
-import { planForTemplateItem, type ExercisePlan } from '@/domain/targets';
+import { defaultPlanFor, planForTemplateItem, type ExercisePlan } from '@/domain/targets';
 import { LOCAL_USER, now, newId } from './common';
 import { buildSessionExercise, planFromRow, rowFromPlan, type PlanRow } from './targets';
 import { getExercise } from './library';
+import { getSetting, setSetting } from './settings';
+
+export { getSetting, setSetting } from './settings';
 
 export { LOCAL_USER } from './common';
 
@@ -110,26 +113,6 @@ export async function updateProfile(database: SQLiteDatabase, patch: Partial<Pro
     LOCAL_USER,
     next.unit,
     next.sessionMinutes,
-    now(),
-  );
-}
-
-export async function getSetting<T>(database: SQLiteDatabase, key: string): Promise<T | null> {
-  const row = await database.getFirstAsync<{ value: string }>(
-    'SELECT value FROM settings WHERE user_id = ? AND key = ? AND deleted_at IS NULL',
-    LOCAL_USER,
-    key,
-  );
-  return row ? (JSON.parse(row.value) as T | null) : null;
-}
-
-export async function setSetting(database: SQLiteDatabase, key: string, value: unknown) {
-  await database.runAsync(
-    'INSERT INTO settings (id,user_id,key,value,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at',
-    `setting-${key}`,
-    LOCAL_USER,
-    key,
-    JSON.stringify(value),
     now(),
   );
 }
@@ -512,6 +495,27 @@ export async function saveRoutineItem(
     now(),
     itemId,
   );
+}
+
+/** Adds an exercise to the end of a plan day with the default plan and the global rest default. */
+export async function addExerciseToRoutine(
+  database: SQLiteDatabase,
+  routineId: string,
+  exerciseId: string,
+  mode: ExerciseMode,
+  unit: Unit,
+) {
+  const last = await database.getFirstAsync<{ last: number | null }>(
+    'SELECT MAX(sort_order) AS last FROM routine_items WHERE routine_id = ? AND deleted_at IS NULL',
+    routineId,
+  );
+  await insertRoutineItem(database, {
+    routineId,
+    exerciseId,
+    plan: defaultPlanFor(mode, unit),
+    restSeconds: await getRestDefault(database),
+    order: (last?.last ?? -1) + 1,
+  });
 }
 
 export async function removeRoutineItem(database: SQLiteDatabase, itemId: string) {
