@@ -13,6 +13,7 @@ type TrainingState = {
   toggleSet: (slotId: string, setId: string) => void;
   adjustSet: (slotId: string, setId: string, field: SetField, delta: number) => void;
   setNotes: (notes: string) => void;
+  setRestEndsAt: (endsAt: string | undefined) => void;
 };
 
 type Draft = SessionDraft;
@@ -60,4 +61,6 @@ export const useTrainingStore = create<TrainingState>((set) => ({
         : state,
     ),
   setNotes: (notes) => set((state) => (state.draft ? { draft: { ...state.draft, notes } } : state)),
+  setRestEndsAt: (restEndsAt) =>
+    set((state) => (state.draft ? { draft: { ...state.draft, restEndsAt } } : state)),
 }));

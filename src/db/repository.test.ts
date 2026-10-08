@@ -27,7 +27,14 @@ import {
 import { importWorkoutCsv } from '@/domain/importExport';
 import { nextRoutine, starterTemplates } from '@/domain/plans';
 import { type ExercisePlan } from '@/domain/targets';
-import { saveRoutineItem, listRoutineItems } from './repository';
+import {
+  getPlateSetup,
+  getRestDefault,
+  listRoutineItems,
+  saveRoutineItem,
+  savePlateSetup,
+  setRestDefault,
+} from './repository';
 
 function adapt(raw: DatabaseSync) {
   const adapter = {
@@ -341,5 +348,34 @@ describe('progression drives the session', () => {
       restSeconds: 180,
       reason: 'Plan 4×3–5 · no history yet',
     });
+  });
+});
+
+describe('rest timer and plates survive restart', () => {
+  it('keeps the rest end time on the draft so a relaunch shows the same countdown', async () => {
+    const endsAt = '2026-10-08T12:00:00.000Z';
+    await saveDraft(database, { ...draftWith(), restEndsAt: endsAt });
+    await restart();
+    expect((await loadDraft(database))?.restEndsAt).toBe(endsAt);
+  });
+
+  it('keeps the default rest and per-unit plate setups', async () => {
+    expect(await getRestDefault(database)).toBe(90);
+    await setRestDefault(database, 120);
+    await savePlateSetup(database, 'kg', {
+      bar: 'custom',
+      barWeight: 15,
+      inventory: [25, 10, 2.5],
+      stack: [25, 10],
+    });
+    await restart();
+    expect(await getRestDefault(database)).toBe(120);
+    expect(await getPlateSetup(database, 'kg')).toEqual({
+      bar: 'custom',
+      barWeight: 15,
+      inventory: [25, 10, 2.5],
+      stack: [25, 10],
+    });
+    expect((await getPlateSetup(database, 'lb')).inventory).toEqual([45, 35, 25, 10, 5, 2.5]);
   });
 });

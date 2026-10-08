@@ -2,7 +2,7 @@ import * as Haptics from 'expo-haptics';
 import { useKeepAwake } from 'expo-keep-awake';
 import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
@@ -15,15 +15,31 @@ import { useTrainingStore } from '@/state/training';
 import { radius, spacing } from '@/theme/tokens';
 import { useAppTheme } from '@/theme/useAppTheme';
 
+const endsIn = (seconds: number) => new Date(Date.now() + seconds * 1000).toISOString();
+
+/**
+ * Seconds left until the stored end time. Computed from the clock on every render, so a
+ * backgrounded app shows the right time as soon as it is foregrounded.
+ */
+function useRemainingSeconds(endsAt: string | undefined) {
+  const [, tick] = useReducer((value: number) => value + 1, 0);
+  useEffect(() => {
+    if (!endsAt) return;
+    const timer = setInterval(tick, 250);
+    return () => clearInterval(timer);
+  }, [endsAt]);
+  if (!endsAt) return 0;
+  return Math.max(0, Math.ceil((Date.parse(endsAt) - Date.now()) / 1000));
+}
+
 export default function SessionScreen() {
   useKeepAwake();
   const theme = useAppTheme();
   const database = useSQLiteContext();
-  const { draft, setDraft, toggleSet, adjustSet, setNotes } = useTrainingStore();
+  const { draft, setDraft, toggleSet, adjustSet, setNotes, setRestEndsAt } = useTrainingStore();
   const [ready, setReady] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const [rest, setRest] = useState(0);
-  const [restTarget, setRestTarget] = useState(0);
+  const rest = useRemainingSeconds(draft?.restEndsAt);
   const [unit, setUnit] = useState<Unit>('lb');
   useEffect(() => {
     void getProfile(database).then((profile) => setUnit(profile.unit));
@@ -48,15 +64,19 @@ export default function SessionScreen() {
     );
   }, [database, draft, ready]);
   const exercises = useMemo(() => draft?.exercises ?? [], [draft]);
+  // Fire the rest-end haptic only when a running rest reaches zero while this screen is open.
+  const previousRest = useRef(rest);
   useEffect(() => {
-    if (rest <= 0) return;
-    const timer = setTimeout(() => setRest((value) => Math.max(0, value - 1)), 1000);
-    return () => clearTimeout(timer);
-  }, [rest]);
-  useEffect(() => {
-    if (rest === 0 && restTarget > 0)
+    if (previousRest.current > 0 && rest === 0)
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, [rest, restTarget]);
+    previousRest.current = rest;
+  }, [rest]);
+  /** Moves the stored end time; never before now, so a skipped-past rest just ends. */
+  const shiftRest = (seconds: number) => {
+    const current = Date.parse(draft?.restEndsAt ?? '') || Date.now();
+    const next = Math.max(Date.now(), current + seconds * 1000);
+    setRestEndsAt(new Date(next).toISOString());
+  };
   const completed = useMemo(
     () => exercises.flatMap((exercise) => exercise.sets).filter((set) => set.done).length,
     [exercises],
@@ -78,9 +98,9 @@ export default function SessionScreen() {
         <View style={styles.rest}>
           <Text>Rest</Text>
           <View style={styles.row}>
-            <Button onPress={() => setRest((value) => Math.max(0, value - 30))}>−30s</Button>
-            <Button onPress={() => setRest((value) => value + 30)}>+30s</Button>
-            <Button onPress={() => setRest(0)}>Skip</Button>
+            <Button onPress={() => shiftRest(-30)}>−30s</Button>
+            <Button onPress={() => shiftRest(30)}>+30s</Button>
+            <Button onPress={() => setRestEndsAt(undefined)}>Skip</Button>
           </View>
         </View>
       )}
@@ -118,8 +138,7 @@ export default function SessionScreen() {
                 onPress={() => {
                   toggleSet(exercise.slotId, workoutSet.id);
                   if (!workoutSet.done) {
-                    setRestTarget(exercise.restSeconds);
-                    setRest(exercise.restSeconds);
+                    setRestEndsAt(endsIn(exercise.restSeconds));
                     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                   }
                 }}

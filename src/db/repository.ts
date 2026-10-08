@@ -9,6 +9,7 @@ import {
   type TemplateExercise,
 } from '@/domain/plans';
 import { modeFor } from '@/domain/exercises';
+import { defaultPlateSetup, type PlateSetup } from '@/domain/plates';
 import { type SessionExercise, type SessionSet } from '@/domain/session';
 import { planForTemplateItem, type ExercisePlan } from '@/domain/targets';
 import { LOCAL_USER, now, newId } from './common';
@@ -133,6 +134,29 @@ export async function setSetting(database: SQLiteDatabase, key: string, value: u
   );
 }
 
+// ---- rest and plates --------------------------------------------------------
+
+export const DEFAULT_REST_SECONDS = 90;
+
+/** Global default rest. Used for exercises added without a routine item (library add, swap). */
+export async function getRestDefault(database: SQLiteDatabase) {
+  const value = await getSetting<number>(database, 'restDefault');
+  return typeof value === 'number' && value > 0 ? value : DEFAULT_REST_SECONDS;
+}
+
+export async function setRestDefault(database: SQLiteDatabase, seconds: number) {
+  await setSetting(database, 'restDefault', seconds);
+}
+
+export async function getPlateSetup(database: SQLiteDatabase, unit: Unit): Promise<PlateSetup> {
+  const stored = await getSetting<PlateSetup>(database, `plates.${unit}`);
+  return stored ?? defaultPlateSetup(unit);
+}
+
+export async function savePlateSetup(database: SQLiteDatabase, unit: Unit, setup: PlateSetup) {
+  await setSetting(database, `plates.${unit}`, setup);
+}
+
 // ---- bodyweight -----------------------------------------------------------
 
 export type BodyweightEntry = { id: string; measuredAt: string; weight: number; unit: Unit };
@@ -173,6 +197,8 @@ export async function addBodyweight(database: SQLiteDatabase, weight: number, un
 export type DraftSet = SessionSet;
 export type DraftExercise = SessionExercise;
 export type SessionDraft = {
+  /** ISO time the rest timer ends. Stored, not ticked, so it survives backgrounding and restarts. */
+  restEndsAt?: string | undefined;
   workoutId: string;
   routineId?: string | undefined;
   name: string;

@@ -31,3 +31,30 @@ export function platesForTarget(target: number, barWeight: number, inventory: nu
     remainder: remaining * 2,
   };
 }
+
+export type BarType = 'olympic' | 'ez' | 'trap' | 'smith' | 'custom';
+export const barTypes: BarType[] = ['olympic', 'ez', 'trap', 'smith', 'custom'];
+
+/** What the user owns and is using, per unit. Persisted in settings. */
+export type PlateSetup = {
+  bar: BarType;
+  barWeight: number;
+  /** Plate sizes the user owns (per plate, not per side count). */
+  inventory: number[];
+  /** Plates currently on one side of the bar in the builder. */
+  stack: number[];
+};
+
+export function defaultPlateSetup(unit: Unit): PlateSetup {
+  return {
+    bar: 'olympic',
+    barWeight: barOptions[unit].olympic,
+    inventory: [...plateOptions[unit]],
+    stack: [],
+  };
+}
+
+/** Bar weight for a bar type; custom bars keep the user's own weight. */
+export function barWeightFor(unit: Unit, bar: BarType, custom: number) {
+  return bar === 'custom' ? custom : barOptions[unit][bar];
+}
