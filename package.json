@@ -1,0 +1,52 @@
+{
+  "name": "lift",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start --dev-client",
+    "ios": "expo run:ios",
+    "android": "expo run:android",
+    "prebuild": "expo prebuild",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify": "npm run typecheck && npm run lint && npm run test",
+    "import:exercises": "tsx scripts/import-exercises.ts"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "15.0.3",
+    "@tanstack/react-query": "5.87.4",
+    "drizzle-orm": "0.44.5",
+    "expo": "57.0.25",
+    "expo-constants": "57.0.19",
+    "expo-dev-client": "57.0.19",
+    "expo-haptics": "57.0.3",
+    "expo-keep-awake": "57.0.2",
+    "expo-linking": "57.0.11",
+    "expo-router": "57.0.23",
+    "expo-sqlite": "57.0.3",
+    "expo-status-bar": "57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "5.7.0",
+    "react-native-screens": "4.26.0",
+    "react-native-svg": "15.13.0",
+    "zustand": "5.0.8"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.35.0",
+    "@types/node": "22.18.3",
+    "@types/react": "19.1.12",
+    "eslint": "9.35.0",
+    "eslint-config-expo": "10.0.0",
+    "globals": "16.4.0",
+    "prettier": "3.6.2",
+    "tsx": "4.20.5",
+    "typescript": "5.9.2",
+    "typescript-eslint": "8.43.0",
+    "vitest": "3.2.4"
+  }
+}
