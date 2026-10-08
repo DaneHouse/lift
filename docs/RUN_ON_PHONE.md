@@ -33,7 +33,7 @@ Run `npm run verify` to confirm the checkout is healthy before building.
 npx expo prebuild --platform ios
 ```
 
-This creates `ios/`. The folder is gitignored, so nothing from it is committed. Re-run this step after any change to `app.config.ts` or to a native plugin. Use `--clean` to regenerate from scratch.
+This creates `ios/` and runs `pod install` (CocoaPods), which produces `ios/LIFT.xcworkspace`. If CocoaPods is missing, install it (`brew install cocoapods`) and run the command again. The folder is gitignored, so nothing from it is committed. Adding `--no-install` skips CocoaPods, and then there is no `.xcworkspace` to open. Re-run this step after any change to `app.config.ts` or to a native plugin. Use `--clean` to regenerate from scratch.
 
 ## 4. Set signing in Xcode (once per `ios/` folder)
 
