@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { LOCAL_USER, newId } from './common';
-import { nextTarget, type ExercisePlan, type ExercisePolicy } from '@/domain/targets';
+import { nextTarget, planExtras, type ExercisePlan, type ExercisePolicy } from '@/domain/targets';
 import type { Unit, WorkoutPerformance } from '@/domain/progression';
 import type { SessionExercise } from '@/domain/session';
 
@@ -47,11 +47,27 @@ export type PlanRow = {
   rep_max: number | null;
   increment: number;
   seconds: number | null;
+  target_rir: number | null;
+  backoff_percent: number | null;
+  training_max: number | null;
+  deload_every: number;
 };
 
+export const PLAN_COLUMNS =
+  'sets, rep_min, rep_max, seconds, policy, increment, target_rir, backoff_percent, training_max, deload_every';
+
+const policies: ExercisePolicy[] = [
+  'linear',
+  'double',
+  'time',
+  'rir',
+  'top-backoff',
+  '531',
+  'bodyweight',
+];
+
 export function planFromRow(row: PlanRow): ExercisePlan {
-  const policy: ExercisePolicy =
-    row.policy === 'linear' || row.policy === 'time' ? row.policy : 'double';
+  const policy: ExercisePolicy = policies.find((value) => value === row.policy) ?? 'double';
   return {
     policy,
     sets: row.sets,
@@ -59,6 +75,10 @@ export function planFromRow(row: PlanRow): ExercisePlan {
     repMax: row.rep_max ?? row.rep_min ?? 8,
     increment: row.increment,
     seconds: row.seconds ?? 30,
+    targetRir: row.target_rir ?? planExtras.targetRir,
+    backoffPercent: row.backoff_percent ?? planExtras.backoffPercent,
+    trainingMax: row.training_max ?? planExtras.trainingMax,
+    deloadEvery: row.deload_every,
   };
 }
 
@@ -72,6 +92,10 @@ export function rowFromPlan(plan: ExercisePlan) {
     rep_max: timed ? null : plan.repMax,
     increment: plan.increment,
     seconds: timed ? plan.seconds : null,
+    target_rir: plan.targetRir,
+    backoff_percent: plan.backoffPercent,
+    training_max: plan.trainingMax,
+    deload_every: plan.deloadEvery,
   };
 }
 
@@ -98,9 +122,10 @@ export async function buildSessionExercise(
     restSeconds: input.restSeconds,
     kind: timed ? 'time' : 'reps',
     plan,
-    sets: Array.from({ length: target.sets }, () => ({
+    sets: Array.from({ length: target.sets }, (_, index) => ({
       id: newId('set'),
-      weight: target.weight,
+      weight:
+        index > 0 && target.backoffWeight !== undefined ? target.backoffWeight : target.weight,
       reps: target.reps,
       seconds: timed ? target.seconds : undefined,
       targetReps: target.reps,

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { planExtras } from './targets';
 import { adjustNumber, estimatedOneRepMax, isPersonalRecord, sessionVolume } from './session';
 
 describe('guided session logic', () => {
@@ -17,7 +18,15 @@ describe('guided session logic', () => {
           reason: '',
           restSeconds: 90,
           kind: 'reps',
-          plan: { policy: 'linear', sets: 2, repMin: 5, repMax: 5, increment: 5, seconds: 0 },
+          plan: {
+            ...planExtras,
+            policy: 'linear',
+            sets: 2,
+            repMin: 5,
+            repMax: 5,
+            increment: 5,
+            seconds: 0,
+          },
           sets: [
             { id: '1', weight: 100, reps: 5, targetReps: 5, done: true },
             { id: '2', weight: 100, reps: 5, targetReps: 5, done: false },

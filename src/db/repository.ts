@@ -13,7 +13,13 @@ import { defaultPlateSetup, type PlateSetup } from '@/domain/plates';
 import { type SessionExercise, type SessionSet } from '@/domain/session';
 import { defaultPlanFor, planForTemplateItem, type ExercisePlan } from '@/domain/targets';
 import { LOCAL_USER, now, newId } from './common';
-import { buildSessionExercise, planFromRow, rowFromPlan, type PlanRow } from './targets';
+import {
+  buildSessionExercise,
+  PLAN_COLUMNS,
+  planFromRow,
+  rowFromPlan,
+  type PlanRow,
+} from './targets';
 import { getExercise } from './library';
 import { getSetting, setSetting } from './settings';
 
@@ -431,7 +437,7 @@ export async function listRoutineItems(
   routineId: string,
 ): Promise<RoutineItem[]> {
   const rows = await database.getAllAsync<ItemRow>(
-    'SELECT id, exercise_id, sets, rep_min, rep_max, seconds, policy, increment, rest_seconds, sort_order FROM routine_items WHERE routine_id = ? AND deleted_at IS NULL ORDER BY sort_order ASC',
+    `SELECT id, exercise_id, ${PLAN_COLUMNS}, rest_seconds, sort_order FROM routine_items WHERE routine_id = ? AND deleted_at IS NULL ORDER BY sort_order ASC`,
     routineId,
   );
   const items: RoutineItem[] = [];
@@ -455,7 +461,7 @@ export async function insertRoutineItem(
 ) {
   const values = rowFromPlan(input.plan);
   await database.runAsync(
-    'INSERT INTO routine_items (id,user_id,routine_id,exercise_id,sets,reps,rep_min,rep_max,seconds,policy,increment,rest_seconds,superset_group,set_type,sort_order,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+    'INSERT INTO routine_items (id,user_id,routine_id,exercise_id,sets,reps,rep_min,rep_max,seconds,policy,increment,rest_seconds,superset_group,set_type,sort_order,updated_at,target_rir,backoff_percent,training_max,deload_every) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
     newId('item'),
     LOCAL_USER,
     input.routineId,
@@ -472,6 +478,10 @@ export async function insertRoutineItem(
     'normal',
     input.order,
     input.stamp ?? now(),
+    values.target_rir,
+    values.backoff_percent,
+    values.training_max,
+    values.deload_every,
   );
 }
 
@@ -484,7 +494,7 @@ export async function saveRoutineItem(
 ) {
   const values = rowFromPlan(plan);
   await database.runAsync(
-    'UPDATE routine_items SET sets = ?, rep_min = ?, rep_max = ?, seconds = ?, policy = ?, increment = ?, rest_seconds = ?, updated_at = ? WHERE id = ?',
+    'UPDATE routine_items SET sets = ?, rep_min = ?, rep_max = ?, seconds = ?, policy = ?, increment = ?, rest_seconds = ?, updated_at = ?, target_rir = ?, backoff_percent = ?, training_max = ?, deload_every = ? WHERE id = ?',
     values.sets,
     values.rep_min,
     values.rep_max,
@@ -493,6 +503,10 @@ export async function saveRoutineItem(
     values.increment,
     restSeconds,
     now(),
+    values.target_rir,
+    values.backoff_percent,
+    values.training_max,
+    values.deload_every,
     itemId,
   );
 }

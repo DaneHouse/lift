@@ -26,7 +26,7 @@ import {
 } from './repository';
 import { importWorkoutCsv } from '@/domain/importExport';
 import { nextRoutine, starterTemplates } from '@/domain/plans';
-import { type ExercisePlan } from '@/domain/targets';
+import { planExtras, type ExercisePlan } from '@/domain/targets';
 import {
   addReference,
   deleteCustomExercise,
@@ -105,6 +105,7 @@ const restart = async () => {
 };
 
 const PLAN = {
+  ...planExtras,
   policy: 'double' as const,
   sets: 2,
   repMin: 8,
@@ -343,6 +344,7 @@ describe('progression drives the session', () => {
     const [squat] = await listRoutineItems(database, routineId);
     const edited: ExercisePlan = {
       ...squat!.plan,
+      ...planExtras,
       policy: 'double',
       repMin: 3,
       repMax: 5,

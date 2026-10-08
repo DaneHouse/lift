@@ -29,9 +29,17 @@ const migration002 = `
 ALTER TABLE custom_exercises ADD COLUMN mode TEXT NOT NULL DEFAULT 'reps';
 `;
 
+const migration003 = `
+ALTER TABLE routine_items ADD COLUMN target_rir REAL;
+ALTER TABLE routine_items ADD COLUMN backoff_percent REAL;
+ALTER TABLE routine_items ADD COLUMN training_max REAL;
+ALTER TABLE routine_items ADD COLUMN deload_every INTEGER NOT NULL DEFAULT 0;
+`;
+
 const migrations: { version: number; sql: string }[] = [
   { version: 1, sql: migration001 },
   { version: 2, sql: migration002 },
+  { version: 3, sql: migration003 },
 ];
 
 export async function migrate(database: SQLiteDatabase) {

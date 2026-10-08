@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { appendSlot, canChangeSlot, moveSlot, replaceSlot, setSkipped } from './sessionDraft';
 import type { SessionExercise } from './session';
+import { planExtras } from './targets';
 
 const slot = (slotId: string, done = false): SessionExercise => ({
   slotId,
@@ -9,7 +10,15 @@ const slot = (slotId: string, done = false): SessionExercise => ({
   reason: '',
   restSeconds: 90,
   kind: 'reps',
-  plan: { policy: 'double', sets: 1, repMin: 8, repMax: 12, increment: 5, seconds: 0 },
+  plan: {
+    ...planExtras,
+    policy: 'double',
+    sets: 1,
+    repMin: 8,
+    repMax: 12,
+    increment: 5,
+    seconds: 0,
+  },
   sets: [{ id: `${slotId}-1`, weight: 0, reps: 8, targetReps: 8, done }],
 });
 

@@ -22,8 +22,22 @@ import { useAppTheme } from '@/theme/useAppTheme';
 const policies: { value: ExercisePolicy; label: string }[] = [
   { value: 'linear', label: 'Linear' },
   { value: 'double', label: 'Double' },
+  { value: 'rir', label: 'RIR' },
+  { value: 'top-backoff', label: 'Top set' },
+  { value: '531', label: '5/3/1' },
+  { value: 'bodyweight', label: 'Bodyweight' },
   { value: 'time', label: 'Time' },
 ];
+
+const policyHelp: Record<ExercisePolicy, string> = {
+  linear: 'Add weight when every set is hit. Three misses in a row deload 10%.',
+  double: 'Climb reps inside the range, then add weight at the top.',
+  rir: 'Weight moves with the reps in reserve you log against the target.',
+  'top-backoff': 'One heavy top set, then lighter back-off sets.',
+  '531': 'Four-week wave off your training max: 5s, 3s, 1s, deload. Max rises each cycle.',
+  bodyweight: 'Add reps up to the ceiling, then add a set.',
+  time: 'Hold longer each time every set is held.',
+};
 
 export default function PlanDayScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -98,6 +112,8 @@ function ItemEditor({
   const [plan, setPlan] = useState<ExercisePlan>(item.plan);
   const [rest, setRest] = useState(item.restSeconds);
   const timed = plan.policy === 'time';
+  const wave = plan.policy === '531';
+  const bodyweight = plan.policy === 'bodyweight';
   const weightStep = unit === 'kg' ? 2.5 : 5;
   const patch = (change: Partial<ExercisePlan>) =>
     setPlan((current) => ({ ...current, ...change }));
@@ -126,6 +142,7 @@ function ItemEditor({
           </Pressable>
         ))}
       </View>
+      <Text>{policyHelp[plan.policy]}</Text>
       <Stepper
         value={plan.sets}
         suffix="sets"
@@ -138,11 +155,18 @@ function ItemEditor({
           suffix="sec hold"
           onChange={(delta) => patch({ seconds: Math.max(5, plan.seconds + delta) })}
         />
+      ) : wave ? (
+        <Stepper
+          value={plan.trainingMax}
+          step={weightStep}
+          suffix={`${unit} training max`}
+          onChange={(delta) => patch({ trainingMax: Math.max(0, plan.trainingMax + delta) })}
+        />
       ) : (
         <>
           <Stepper
             value={plan.repMin}
-            suffix="min reps"
+            suffix={bodyweight ? 'starting reps' : 'min reps'}
             onChange={(delta) =>
               patch({
                 repMin: Math.max(1, plan.repMin + delta),
@@ -152,17 +176,47 @@ function ItemEditor({
           />
           <Stepper
             value={plan.repMax}
-            suffix="max reps"
+            suffix={bodyweight ? 'rep ceiling' : 'max reps'}
             onChange={(delta) => patch({ repMax: Math.max(plan.repMin, plan.repMax + delta) })}
           />
         </>
       )}
-      <Stepper
-        value={plan.increment}
-        step={timed ? 5 : weightStep}
-        suffix={timed ? 'sec per hit' : `${unit} per hit`}
-        onChange={(delta) => patch({ increment: Math.max(0, plan.increment + delta) })}
-      />
+      {plan.policy === 'rir' && (
+        <Stepper
+          value={plan.targetRir}
+          suffix="target RIR"
+          onChange={(delta) =>
+            patch({ targetRir: Math.min(5, Math.max(0, plan.targetRir + delta)) })
+          }
+        />
+      )}
+      {plan.policy === 'top-backoff' && (
+        <Stepper
+          value={Math.round(plan.backoffPercent * 100)}
+          step={5}
+          suffix="% back-off"
+          onChange={(delta) =>
+            patch({
+              backoffPercent: Math.min(0.3, Math.max(0.05, plan.backoffPercent + delta / 100)),
+            })
+          }
+        />
+      )}
+      {!bodyweight && (
+        <Stepper
+          value={plan.increment}
+          step={timed ? 5 : weightStep}
+          suffix={timed ? 'sec per hit' : `${unit} per hit`}
+          onChange={(delta) => patch({ increment: Math.max(0, plan.increment + delta) })}
+        />
+      )}
+      {!timed && !wave && (
+        <Stepper
+          value={plan.deloadEvery}
+          suffix="deload every N weeks (0 = off)"
+          onChange={(delta) => patch({ deloadEvery: Math.max(0, plan.deloadEvery + delta) })}
+        />
+      )}
       <Stepper
         value={rest}
         step={15}

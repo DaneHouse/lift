@@ -66,6 +66,10 @@ export const routineItems = sqliteTable('routine_items', {
   policy: text('policy').notNull(),
   increment: real('increment').notNull().default(5),
   restSeconds: integer('rest_seconds').notNull().default(90),
+  targetRir: real('target_rir'),
+  backoffPercent: real('backoff_percent'),
+  trainingMax: real('training_max'),
+  deloadEvery: integer('deload_every').notNull().default(0),
   supersetGroup: text('superset_group'),
   setType: text('set_type', { enum: ['normal', 'warmup', 'drop'] })
     .notNull()
