@@ -102,6 +102,9 @@ export default function SessionScreen() {
             : `${completed} sets`}
         </Text>
       </View>
+      {(draft?.notices ?? []).map((notice) => (
+        <Text key={notice}>{notice}</Text>
+      ))}
       {rest > 0 && (
         <View style={styles.rest}>
           <Text>Rest</Text>

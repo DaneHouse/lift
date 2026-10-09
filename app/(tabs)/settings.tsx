@@ -38,6 +38,9 @@ export default function Settings() {
         />
         <Text>Used for exercises added without a plan. Each plan day can set its own rest.</Text>
       </Section>
+      <Section title="Injuries">
+        <Button onPress={() => router.push('/injuries')}>Injuries and rehab</Button>
+      </Section>
       <Section title="About">
         <Text>LIFT 0.1.0</Text>
       </Section>

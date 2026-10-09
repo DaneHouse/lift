@@ -3,6 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Button } from '@/components/Button';
+import { Chip } from '@/components/Chip';
 import { Screen } from '@/components/Screen';
 import { Section } from '@/components/Section';
 import { Text } from '@/components/Text';
@@ -172,23 +173,7 @@ export default function ExerciseEdit() {
   );
 }
 
-function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  const theme = useAppTheme();
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      style={[styles.chip, { backgroundColor: active ? theme.foreground : theme.surface }]}
-    >
-      <Text variant="label" style={{ color: active ? theme.background : theme.foreground }}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   input: { padding: spacing.md, borderRadius: radius.md, fontSize: 16 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  chip: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.pill },
 });

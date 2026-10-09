@@ -5,6 +5,7 @@ import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { Section } from '@/components/Section';
 import { Text } from '@/components/Text';
+import { injuriesNeedingCheckin } from '@/db/injuries';
 import {
   type ActivePlanDay,
   draftFromRoutine,
@@ -48,6 +49,13 @@ export default function Today() {
     try {
       const { unit } = await getProfile(database);
       const draft = await draftFromRoutine(database, next.routineId, next.name, unit);
+      if ((await injuriesNeedingCheckin(database, draft)).length > 0) {
+        router.push({
+          pathname: '/checkin',
+          params: { routineId: next.routineId, name: next.name },
+        });
+        return;
+      }
       await saveDraft(database, draft);
       setDraft(draft);
       router.push('/session');
