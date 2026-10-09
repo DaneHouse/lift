@@ -21,6 +21,14 @@ const config: ExpoConfig = {
   android: {
     package: identity.bundleIdentifier,
   },
+  web: {
+    bundler: 'metro',
+    output: 'single',
+    name: identity.name,
+    shortName: identity.name,
+    backgroundColor: '#000000',
+    themeColor: '#000000',
+  },
   plugins: ['expo-router', 'expo-sqlite', 'expo-dev-client'],
   experiments: { typedRoutes: true },
 };

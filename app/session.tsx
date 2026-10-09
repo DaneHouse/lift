@@ -230,6 +230,7 @@ function ExerciseCard({
             <Text>{index + 1}</Text>
             {timed ? (
               <Stepper
+                compact
                 value={workoutSet.seconds ?? 0}
                 step={5}
                 suffix="sec"
@@ -238,12 +239,14 @@ function ExerciseCard({
             ) : (
               <>
                 <Stepper
+                  compact
                   value={workoutSet.weight}
                   step={weightStep}
                   suffix={unit}
                   onChange={(delta) => onAdjust(workoutSet.id, 'weight', delta)}
                 />
                 <Stepper
+                  compact
                   value={workoutSet.reps}
                   suffix="reps"
                   onChange={(delta) => onAdjust(workoutSet.id, 'reps', delta)}
