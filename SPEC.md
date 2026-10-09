@@ -74,6 +74,12 @@ Pure, deterministic functions of the workout log (no stored counters). Every pol
 - **Local-first**: SQLite on device is the source during sessions; background sync to Supabase Postgres (row-level security per user; last-writer-wins per field with updated_at; soft deletes).
 - **Pro via RevenueCat**: monthly + annual + free trial; paywall after the first completed workout and on Pro-feature taps. Friends get promo codes / an entitlement override. Pricing = Kassra's decision (Gate G5).
 
+### 3.8 Daily routines (Free core; v1)
+- **Morning wake-up stretch** and **bedtime stretch**: short guided routines of timed holds, using the library's static stretches (logged as timed holds) and the injury rehab content.
+- Anchored on the lifting: the routine adapts to today's session (stretch what you will train in the morning, what you trained at night) and to active injuries (rehab-safe options, skip flagged areas).
+- Reminder times are the user's choice. Nothing is posted outside the device.
+- Design details still to agree: routine length, how it is built from the plan, reminders, and how completion is tracked.
+
 ## 4. Tech stack
 
 - **App**: Expo (latest stable SDK, currently 57.x), React Native, TypeScript strict, Expo Router, EAS Build/Submit/Update. Dev client (native modules required).
@@ -100,6 +106,7 @@ Launch with **no third-party exercise images/GIFs**: text instructions + muscle 
 - **P5 — Coach**: edge functions, prompts (written fresh), schema validation, intake/plan/review/debrief/chat UI, limits, evals with fixtures (new lifter, ankle sprain, knee, shoulder, red-flag referral).
 - **P6 — Money & launch**: RevenueCat products + paywall, App Store package (privacy policy, nutrition labels incl. health data, HealthKit purpose strings, screenshots, review notes, demo account), TestFlight external for friends. **G4**: Garmin application submitted by Kassra. **G5**: pricing. **G6**: media decision. **G7**: submit for App Store review (Kassra presses the button).
 - **P7 — Android + Garmin** (post-launch unless Garmin approval lands early).
+- **P8 — Nutrition (post-launch)**: food logging and macros anchored on training days. Open decisions before work starts: food database source and licence, barcode scanning, macro target method, how it feeds the coach and recovery score.
 
 ## 8. Non-goals for v1
-Social feed, leaderboards, nutrition/macro tracking, Apple Watch app, web app.
+Social feed, leaderboards, Apple Watch app, web app. Nutrition and macro tracking is deferred to P8, not dropped.
