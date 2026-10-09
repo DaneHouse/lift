@@ -36,7 +36,7 @@ jobs:
         working-directory: frontend
         run: |
           npm ci
-          VITE_MOBILE=1 npx vite build
+          VITE_MOBILE=1 VITE_LIFT=1 npx vite build
           npx cap sync ios
           node scripts/check-mobile-bundle.mjs
 

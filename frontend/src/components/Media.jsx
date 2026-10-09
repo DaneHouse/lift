@@ -4,13 +4,37 @@ import { useStore } from '../store/useStore.js'
 import { t, exerciseNameFor } from '../lib/i18n.js'
 import Icon from './Icon.jsx'
 import CustomMedia, { CustomThumb } from './CustomMedia.jsx'
+import BodyMap from './BodyMap.jsx'
+import { musclesOf } from '../lib/muscles.js'
+import { LIFT } from '../lib/lift.js'
 
 // An exercise's picture, wherever one shows. A custom exercise goes to CustomMedia.jsx — its own
 // photo, GIF, video or link, from the local media store — and never through imgSrc/gifSrc, which
 // name files of the shipped dataset (a stray img/gif on a custom exercise, written by a fork, is
 // ignored). The split is by component, not by branch, so each side keeps its own hooks in order.
 export default function Media(p) {
-  return isCustomEx(p.ex) ? <CustomMedia {...p} /> : <BuiltinMedia {...p} />
+  if (isCustomEx(p.ex)) return <CustomMedia {...p} />
+  return LIFT ? <MuscleMedia {...p} /> : <BuiltinMedia {...p} />
+}
+
+// LIFT: the catalogue's pictures are not ours to ship (lib/lift.js), so the exercise card shows the
+// body map with the muscles it trains — primary movers darkest, secondary ones lighter. Honours the
+// workout's media size setting like the animation it replaces.
+function MuscleMedia({ ex, id, compact, minimizable }) {
+  const gifSize = useStore(s => s.S.gifSize)
+  const body = useStore(s => figureOf(s.S))
+  if (minimizable && gifSize === 'off') return null
+  const mini = minimizable && gifSize === 'mini'
+  return (
+    <div className={'exmedia exmuscles' + (compact ? ' compact' : '') + (mini ? ' mini' : '')} id={id}>
+      <BodyMap load={musclesOf(ex)} body={body} />
+    </div>
+  )
+}
+
+function MuscleThumb({ ex }) {
+  const body = useStore(s => figureOf(s.S))
+  return <div className="thumb thumb-bm"><BodyMap load={musclesOf(ex)} body={body} /></div>
 }
 
 // Big autoplaying animation; tap toggles to the still frame. `compact` shrinks it (superset cards).
@@ -80,7 +104,8 @@ export function autoplayMuted(el) {
 // broken-image glyph in a list of them (#281). The failure is remembered per image, so a list
 // that re-renders does not ask again; a new exercise in the same slot tries its own.
 export function Thumb(p) {
-  return isCustomEx(p.ex) ? <CustomThumb {...p} /> : <BuiltinThumb {...p} />
+  if (isCustomEx(p.ex)) return <CustomThumb {...p} />
+  return LIFT ? <MuscleThumb {...p} /> : <BuiltinThumb {...p} />
 }
 function BuiltinThumb({ ex }) {
   const body = useStore(s => figureOf(s.S))
