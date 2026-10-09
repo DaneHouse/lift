@@ -78,7 +78,11 @@ Pure, deterministic functions of the workout log (no stored counters). Every pol
 - **Morning wake-up stretch** and **bedtime stretch**: short guided routines of timed holds, using the library's static stretches (logged as timed holds) and the injury rehab content.
 - Anchored on the lifting: the routine adapts to today's session (stretch what you will train in the morning, what you trained at night) and to active injuries (rehab-safe options, skip flagged areas).
 - Reminder times are the user's choice. Nothing is posted outside the device.
-- Design details still to agree: routine length, how it is built from the plan, reminders, and how completion is tracked.
+- **Built from today's lifting**: morning opens up what you will train; bedtime stretches what you trained; rest days get a general full-body routine; injured areas use gentle options.
+- **Morning routine (about 6 minutes)**: a prompt to get daylight, mobility holds chosen from today's session, one minute of slow breathing. Evidence for lasting mood or alertness effects is modest, so the app makes no neurochemical claims. Bedtime routine is about 5 minutes of holds plus slow breathing.
+- **Guided screen**: one stretch per screen, auto-advancing countdown with pause and skip, a short cue at the end of each hold.
+- **Entry points**: a Stretch card on Today at the right time of day, an always-available home-screen widget (needs the native widget target, built with P3 after the first dev build), and optional notifications with user-set times (off by default).
+- Open: exact routine length setting (5/10/15), widget contents, completion tracking.
 
 ## 4. Tech stack
 
