@@ -6,7 +6,7 @@ Part A1 of the injuries research (see docs/INJURIES_SPEC.md). Written fresh for 
 
 `src/components/BodyMap.tsx` has 8 coarse blocks (shoulders, chest, back, arms, core, glutes, upper legs, lower legs). It cannot separate hamstring from quad, and it has no joints (neck, elbow, wrist, knee, ankle). Tap-to-pick needs a finer front and back figure with about 30 tappable spots. Options: draw it fresh, or use the MIT-licensed MuscleMap paths (allowed by AGENTS.md, attribution in ACKNOWLEDGEMENTS.md). The same map also improves the library's muscle filter.
 
-## Regions (15)
+## Regions (16)
 
 Each region has its own rehab menus and aggravating movements. Regions replace the 7 areas in `src/domain/injuries.ts`.
 
@@ -29,7 +29,7 @@ Each region has its own rehab menus and aggravating movements. Regions replace t
 | `lower-leg`  | Calf / shin             | calf, shin                                                            |
 | `ankle-foot` | Ankle / Achilles / foot | ankle, Achilles, heel, arch, toes                                     |
 
-(That is 16 rows because `ankle-foot` and `lower-leg` stay separate: calf and Achilles rehab differ.) The spot name is stored on the injury, so the log can say "left hamstring" while the app works from the region.
+`ankle-foot` and `lower-leg` stay separate because calf and Achilles rehab differ. The spot name is stored on the injury, so the log can say "left hamstring" while the app works from the region.
 
 Side rule: every spot has a side. Front or back centre spots (sternum, tailbone side, neck centre) are `center`; everything else is left or right from the tap.
 
