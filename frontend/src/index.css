@@ -113,6 +113,11 @@
 :root[data-theme="light"][data-accent="pink"],
 :root[data-theme="light"][data-accent="red"]   { --on-acc:#fff }
 
+/* LIFT (lib/lift.js): monochrome. The accent is the label colour — white on dark, black on light —
+   so colour is left to what carries meaning (PRs, misses, warnings). Beats every preset above. */
+:root[data-lift][data-accent]{ --acc:#ffffff; --acc-2:#d1d1d6; --on-acc:#000000 }
+:root[data-lift][data-theme="light"][data-accent]{ --acc:#000000; --acc-2:#3a3a3c; --on-acc:#ffffff }
+
 /* ---------------------------------------------------------------- reset -- */
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{

@@ -17,6 +17,7 @@ import { installViewportGuard } from './lib/viewport-guard.js'
 import { installChipDrag } from './lib/hchips.js'
 import { syncPushSubscription } from './lib/push.js'
 import { MOBILE } from './lib/mobile.js'
+import { LIFT } from './lib/lift.js'
 import { exitWorkoutEdit, startFlow } from './sheets.jsx'
 import Icon from './components/Icon.jsx'
 import TabBar from './components/TabBar.jsx'
@@ -60,7 +61,9 @@ const resolveTheme = theme => theme === 'light' || theme === 'dark'
 function applyPrefs(theme, accent) {
   const de = document.documentElement
   de.dataset.theme = resolveTheme(theme)
-  applyAccent(de, accent, de.dataset.theme)
+  // LIFT is monochrome: index.css draws the accent from the label colour under data-lift.
+  if (LIFT) de.dataset.lift = '1'
+  applyAccent(de, LIFT ? 'lime' : accent, de.dataset.theme)
   const meta = document.querySelector('meta[name="theme-color"]')
   if (meta) meta.content = de.dataset.theme === 'light' ? '#f2f2f7' : '#000000'
   if (MOBILE) setSystemBarsLight(de.dataset.theme === 'light')

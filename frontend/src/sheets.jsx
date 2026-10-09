@@ -1,4 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import { APP_NAME } from './lib/lift.js'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf, smOf, searchExercises, similarExercises, exOr, isAssisted, betterWeight, beatsWeight, isCustomEx } from './lib/exercises.js'
@@ -2610,7 +2611,7 @@ function ShareWorkoutImage({ w, nameOf, close }) {
   const name = 'opengym-workout-' + (workoutDay(w) || todayISO()) + '.png'
   const share = async () => {
     setBusy(true)
-    await shareImage(img.blob, name, w.name || 'openGym')
+    await shareImage(img.blob, name, w.name || APP_NAME)
     setBusy(false)
     close()
   }

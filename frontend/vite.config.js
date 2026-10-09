@@ -82,9 +82,11 @@ const swStamp = {
 // reads this tag in the synced copy after `cap sync` and fails the build without it.
 const flavor = {
   name: 'opengym-flavor',
-  transformIndexHtml() {
+  transformIndexHtml(html) {
     if (process.env.VITE_MOBILE !== '1') return
-    return [{ tag: 'meta', attrs: { name: 'opengym-flavor', content: 'mobile' }, injectTo: 'head' }]
+    // LIFT (src/lib/lift.js) carries its own name in the page title as well.
+    if (process.env.VITE_LIFT === '1') html = html.replace('<title>openGym</title>', '<title>LIFT</title>')
+    return { html, tags: [{ tag: 'meta', attrs: { name: 'opengym-flavor', content: 'mobile' }, injectTo: 'head' }] }
   }
 }
 

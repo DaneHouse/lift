@@ -30,6 +30,7 @@ import { syncMedia, fetchToStore } from '../lib/media-sync.js'
 import { getMediaStatus, subscribeMediaStatus, pendingRefCount } from '../lib/media-owed.js'
 import { limitsFrom, fmtMB, MB } from '../lib/media-limits.js'
 import { setRestAccent } from '../lib/rest-alert.js'
+import { LIFT } from '../lib/lift.js'
 import { CUSTOM, accentKey, adjustedIn, applyAccent, cleanHex, inkOn, isGrey } from '../lib/accent.js'
 import { checkForUpdate, downloadAndInstall } from '../lib/update.js'
 import { forgetCoach } from '../lib/coach-api.js'
@@ -727,12 +728,13 @@ export default function Settings({ page = null, find = null, via = null }) {
             onChange={v => update(s => { s.theme = v })}
           />
         </Row>
-        <div className="lrow" style={{ flexWrap: 'wrap', rowGap: 12, paddingBottom: 14 }}>
+        {/* LIFT is monochrome (lib/lift.js): no accent to choose. */}
+        {!LIFT && <div className="lrow" style={{ flexWrap: 'wrap', rowGap: 12, paddingBottom: 14 }}>
           <span className="lrow-i" style={{ '--tint': 'var(--purple)' }}><Icon name="palette" /></span>
           <span className="lrow-m"><span className="lrow-t">{t('Accent color')}</span></span>
           <span className="lrow-v">{accentLabel(S)}</span>
           <AccentSwatches S={S} update={update} />
-        </div>
+        </div>}
         {/* How the muscle map is drawn. The exercise drawings follow it until they are set below. */}
         <Row icon="figureStrength" iconTint="var(--teal)" title={t('Body diagram')}>
           <Segmented

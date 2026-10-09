@@ -7,6 +7,7 @@
 //   drawWorkoutCard   — paints a layout onto a 2D canvas context
 // Nothing here stores anything; the workout is read, never written.
 import { sessionSections, workoutVolume, workoutDuration, workoutDay, doneUnits } from './history.js'
+import { APP_NAME } from './lift.js'
 import { EXIDX } from './exercises.js'
 import { isWarmupRow } from './workout-model.js'
 import { MUSCLES, INERT, levelsOf, loadOfWorkouts } from './muscles.js'
@@ -188,7 +189,7 @@ export function layoutWorkoutCard(model, { measure, rtl = false, width = CARD_WI
 
   y += 64
   const height = Math.max(MIN_HEIGHT, Math.round(y + 34 + PAD))
-  items.push({ kind: 'text', text: 'openGym', x: start, y: height - PAD, size: 34, weight: 700, color: 'acc' })
+  items.push({ kind: 'text', text: APP_NAME, x: start, y: height - PAD, size: 34, weight: 700, color: 'acc' })
   return { width, height, rtl, items }
 }
 

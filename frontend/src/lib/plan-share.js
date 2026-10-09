@@ -2,6 +2,7 @@
 //
 // Two jobs:
 //  1. A small, self-contained file a friend can import into THEIR openGym — just the
+import { APP_NAME } from './lift.js'
 //     routines + the week schedule + the custom exercises those routines use. It never
 //     carries workouts, weigh-ins or settings, and importing MERGES (adds routines with
 //     fresh ids) so nothing the friend already has is touched.
@@ -466,7 +467,7 @@ export function planPrintHTML(S, owner, { routineId } = {}) {
 </style></head>
 <body><div class="doc">
   <header>
-    <div class="kicker">openGym</div>
+    <div class="kicker">${esc(APP_NAME)}</div>
     <h1>${esc(title)}</h1>
     ${sub ? `<div class="sub">${sub}</div>` : ''}
   </header>
