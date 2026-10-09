@@ -23,6 +23,10 @@ export type SessionExercise = {
   kind: 'reps' | 'time';
   plan: ExercisePlan;
   skipped?: boolean | undefined;
+  /** Set on rehab block slots, so finishing the session can log rehab per injury. */
+  rehab?: { injuryId: string; area: string } | undefined;
+  /** Name of the exercise this slot replaced after an injury check-in swap. */
+  swappedFrom?: string | undefined;
   sets: SessionSet[];
 };
 

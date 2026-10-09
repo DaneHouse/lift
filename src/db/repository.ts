@@ -20,6 +20,7 @@ import {
   rowFromPlan,
   type PlanRow,
 } from './targets';
+import { logRehabForDraft } from './injuries';
 import { getExercise } from './library';
 import { getSetting, setSetting } from './settings';
 
@@ -39,6 +40,7 @@ export const EXPORT_TABLES = [
   'bodyweight',
   'injuries',
   'injury_checkins',
+  'injury_rehab_logs',
   'health_daily',
   'coach_threads',
   'coach_proposals',
@@ -199,6 +201,8 @@ export type SessionDraft = {
   name: string;
   startedAt: string;
   notes: string;
+  /** Messages from the injury check-in to read before lifting. */
+  notices?: string[] | undefined;
   exercises: DraftExercise[];
 };
 
@@ -258,6 +262,7 @@ export async function finishDraft(database: SQLiteDatabase, draft: SessionDraft)
         order += 1;
       }
     }
+    await logRehabForDraft(database, draft, completedAt);
     await saveDraft(database, null);
   });
 }

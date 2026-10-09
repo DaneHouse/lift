@@ -8,7 +8,7 @@ export type InjuryArea =
   | 'shoulder'
   | 'elbow-wrist'
   | 'neck';
-export type InjurySide = 'left' | 'right' | 'both' | 'centre';
+export type InjurySide = 'left' | 'right' | 'both' | 'center';
 export type InjuryStage = 'protect' | 'restore' | 'rebuild' | 'return';
 /** `referred` = red flag raised: the area is not loaded until the user clears it. */
 export type InjuryStatus = 'active' | 'referred' | 'resolved';
@@ -37,6 +37,17 @@ export const injuryAreas: { value: InjuryArea; label: string }[] = [
   { value: 'elbow-wrist', label: 'Elbow / wrist' },
   { value: 'neck', label: 'Neck' },
 ];
+const shortNames: Record<InjuryArea, string> = {
+  ankle: 'ankle',
+  knee: 'knee',
+  hip: 'hip',
+  'low-back': 'low back',
+  shoulder: 'shoulder',
+  'elbow-wrist': 'elbow/wrist',
+  neck: 'neck',
+};
+/** Lower-case short name for one-line reasons. */
+export const areaShort = (area: InjuryArea) => shortNames[area];
 export const areaLabel = (area: InjuryArea) =>
   injuryAreas.find((entry) => entry.value === area)?.label ?? area;
 
@@ -445,7 +456,7 @@ export function planInjurySession(
     if (injury.status === 'resolved') continue;
     const flagged = lifts.filter((lift) => loadsArea(injury.area, lift));
     if (!flagged.length) continue;
-    const label = areaLabel(injury.area).toLowerCase();
+    const label = areaShort(injury.area);
     const checkin = checkins[injury.id];
     if (injury.status === 'referred') {
       for (const lift of flagged)

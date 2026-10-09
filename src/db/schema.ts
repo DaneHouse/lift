@@ -125,7 +125,17 @@ export const injuries = sqliteTable('injuries', {
   stage: text('stage', { enum: ['protect', 'restore', 'rebuild', 'return'] }).notNull(),
   description: text('description'),
   startedAt: text('started_at').notNull(),
-  status: text('status', { enum: ['active', 'resolved'] }).notNull(),
+  status: text('status', { enum: ['active', 'referred', 'resolved'] }).notNull(),
+  stageSince: text('stage_since'),
+});
+
+export const injuryRehabLogs = sqliteTable('injury_rehab_logs', {
+  ...syncColumns,
+  injuryId: text('injury_id').notNull(),
+  workoutId: text('workout_id').notNull(),
+  completed: integer('completed', { mode: 'boolean' }).notNull(),
+  easy: integer('easy', { mode: 'boolean' }).notNull(),
+  performedAt: text('performed_at').notNull(),
 });
 
 export const injuryCheckins = sqliteTable('injury_checkins', {
@@ -191,6 +201,7 @@ export const schema = {
   bodyweight,
   injuries,
   injuryCheckins,
+  injuryRehabLogs,
   healthDaily,
   coachThreads,
   coachProposals,

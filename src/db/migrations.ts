@@ -41,11 +41,19 @@ const migration004 = `
 UPDATE custom_exercises SET mode = 'time' WHERE mode = 'reps' AND id IN ('custom-plank', 'custom-side-plank', 'custom-farmer-carry');
 `;
 
+const migration005 = `
+ALTER TABLE injuries ADD COLUMN stage_since TEXT;
+CREATE TABLE IF NOT EXISTS injury_rehab_logs (id TEXT PRIMARY KEY NOT NULL, user_id TEXT NOT NULL, injury_id TEXT NOT NULL, workout_id TEXT NOT NULL, completed INTEGER NOT NULL, easy INTEGER NOT NULL, performed_at TEXT NOT NULL, updated_at TEXT NOT NULL, deleted_at TEXT);
+CREATE INDEX IF NOT EXISTS injury_rehab_logs_injury_id ON injury_rehab_logs (injury_id);
+CREATE INDEX IF NOT EXISTS injury_checkins_injury_id ON injury_checkins (injury_id);
+`;
+
 const migrations: { version: number; sql: string }[] = [
   { version: 1, sql: migration001 },
   { version: 2, sql: migration002 },
   { version: 3, sql: migration003 },
   { version: 4, sql: migration004 },
+  { version: 5, sql: migration005 },
 ];
 
 export async function migrate(database: SQLiteDatabase) {

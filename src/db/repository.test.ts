@@ -28,6 +28,18 @@ import { importWorkoutCsv } from '@/domain/importExport';
 import { nextRoutine, starterTemplates } from '@/domain/plans';
 import { planExtras, type ExercisePlan } from '@/domain/targets';
 import {
+  addInjury,
+  applyInjuryPlan,
+  clearReferral,
+  injuriesNeedingCheckin,
+  listCheckins,
+  listInjuries,
+  listRehabLogs,
+  saveCheckin,
+  setInjuryStage,
+  setInjuryStatus,
+} from './injuries';
+import {
   addReference,
   deleteCustomExercise,
   deleteReference,
@@ -513,5 +525,150 @@ describe('exercise references', () => {
     expect((await listReferences(database, '0001')).map((link) => link.url)).toEqual([
       'https://www.instagram.com/reel/xyz',
     ]);
+  });
+});
+
+describe('injuries and rehab', () => {
+  const startDay = async () => {
+    const template = starterTemplates.find((item) => item.id === '5x5')!;
+    await saveActivePlan(database, template, 60);
+    const routineId = (await loadActivePlan(database)).days[0]!.routineId;
+    return draftFromRoutine(database, routineId, 'Day 1', 'lb');
+  };
+
+  it('stores injuries with stage and survives a restart; resolved ones are hidden', async () => {
+    const id = await addInjury(database, {
+      area: 'ankle',
+      side: 'left',
+      stage: 'restore',
+      description: 'Rolled it',
+    });
+    await restart();
+    expect(await listInjuries(database)).toMatchObject([
+      {
+        id,
+        area: 'ankle',
+        side: 'left',
+        stage: 'restore',
+        status: 'active',
+        description: 'Rolled it',
+      },
+    ]);
+    await setInjuryStatus(database, id, 'resolved');
+    expect(await listInjuries(database)).toEqual([]);
+    expect(await listInjuries(database, { includeResolved: true })).toHaveLength(1);
+  });
+
+  it('changing stage restarts the stage clock', async () => {
+    const id = await addInjury(
+      database,
+      { area: 'knee', side: 'right', stage: 'protect', description: '' },
+      '2026-09-01T00:00:00.000Z',
+    );
+    expect((await listInjuries(database))[0]?.stageSince).toBe('2026-09-01T00:00:00.000Z');
+    await setInjuryStage(database, id, 'restore');
+    const [injury] = await listInjuries(database);
+    expect(injury?.stage).toBe('restore');
+    expect(injury!.stageSince > '2026-10-01').toBe(true);
+  });
+
+  it('asks for a check-in only when the session loads the injured area', async () => {
+    const draft = await startDay();
+    await addInjury(database, { area: 'neck', side: 'center', stage: 'protect', description: '' });
+    expect(await injuriesNeedingCheckin(database, draft)).toEqual([]);
+    await addInjury(database, { area: 'ankle', side: 'left', stage: 'restore', description: '' });
+    expect(await injuriesNeedingCheckin(database, draft)).toHaveLength(1);
+  });
+
+  it('puts the rehab block first and swaps or skips flagged lifts on a low check-in', async () => {
+    const injuryId = await addInjury(database, {
+      area: 'ankle',
+      side: 'left',
+      stage: 'restore',
+      description: '',
+    });
+    const base = await startDay();
+    const adjusted = await applyInjuryPlan(database, base, 'lb', {
+      [injuryId]: { score: 2, redFlag: false },
+    });
+    const rehab = adjusted.exercises.filter((slot) => slot.rehab);
+    expect(rehab).toHaveLength(3);
+    expect(adjusted.exercises.slice(0, 3).every((slot) => slot.rehab?.injuryId === injuryId)).toBe(
+      true,
+    );
+    expect(rehab[0]?.reason).toContain('Rehab restore');
+
+    const squat = adjusted.exercises.find((slot) => slot.swappedFrom === 'Back squat')!;
+    expect(squat.name).toBe('Leg press');
+    expect(squat.reason).toContain('ankle check-in 2/5');
+    const lunge = adjusted.exercises.find((slot) => slot.name === 'Lunge')!;
+    expect(lunge.skipped).toBe(true);
+    expect(lunge.reason).toContain('no safe variation');
+    expect(
+      adjusted.exercises.find((slot) => slot.name === 'Barbell bench press')?.skipped,
+    ).toBeUndefined();
+  });
+
+  it('logs rehab on finish: complete when every rehab set is done, with check-ins kept', async () => {
+    const injuryId = await addInjury(database, {
+      area: 'ankle',
+      side: 'left',
+      stage: 'restore',
+      description: '',
+    });
+    const base = await startDay();
+    const adjusted = await applyInjuryPlan(database, base, 'lb', {});
+    await saveCheckin(database, { injuryId, workoutId: adjusted.workoutId, score: 4 });
+    const done: SessionDraft = {
+      ...adjusted,
+      exercises: adjusted.exercises.map((slot) =>
+        slot.rehab ? { ...slot, sets: slot.sets.map((set) => ({ ...set, done: true })) } : slot,
+      ),
+    };
+    await finishDraft(database, done);
+    await restart();
+    expect(await listRehabLogs(database, injuryId)).toMatchObject([
+      { completed: true, easy: true },
+    ]);
+    expect(await listCheckins(database, injuryId)).toMatchObject([{ score: 4 }]);
+  });
+
+  it('logs an incomplete rehab block as not completed', async () => {
+    const injuryId = await addInjury(database, {
+      area: 'ankle',
+      side: 'left',
+      stage: 'restore',
+      description: '',
+    });
+    const adjusted = await applyInjuryPlan(database, await startDay(), 'lb', {});
+    await finishDraft(database, adjusted);
+    expect(await listRehabLogs(database, injuryId)).toMatchObject([{ completed: false }]);
+  });
+
+  it('a red flag removes the loaded lifts and a referred injury stays off until cleared', async () => {
+    const injuryId = await addInjury(database, {
+      area: 'ankle',
+      side: 'left',
+      stage: 'rebuild',
+      description: '',
+    });
+    const flagged = await applyInjuryPlan(database, await startDay(), 'lb', {
+      [injuryId]: { score: 5, redFlag: true },
+    });
+    expect(flagged.exercises.some((slot) => slot.rehab)).toBe(false);
+    expect(flagged.exercises.find((slot) => slot.name === 'Back squat')?.skipped).toBe(true);
+    expect(flagged.notices?.[0]).toContain('physio or doctor');
+
+    await setInjuryStatus(database, injuryId, 'referred');
+    const later = await applyInjuryPlan(database, await startDay(), 'lb', {});
+    expect(later.exercises.find((slot) => slot.name === 'Back squat')?.skipped).toBe(true);
+    expect(await injuriesNeedingCheckin(database, later)).toEqual([]);
+
+    await clearReferral(database, injuryId);
+    const [injury] = await listInjuries(database);
+    expect(injury).toMatchObject({ status: 'active', stage: 'protect' });
+    const cleared = await applyInjuryPlan(database, await startDay(), 'lb', {});
+    expect(cleared.exercises.filter((slot) => slot.rehab)).toHaveLength(3);
+    expect(cleared.exercises.find((slot) => slot.name === 'Back squat')?.skipped).toBeUndefined();
   });
 });
