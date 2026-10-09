@@ -18,6 +18,12 @@ describe('exercise modes', () => {
     expect(byName('weighted front plank')?.mode).toBe('time');
     expect(byName('farmers walk')?.mode).toBe('time');
   });
+  it('static stretches are timed, dynamic ones stay on reps', () => {
+    expect(byName('hamstring stretch')?.mode).toBe('time');
+    expect(byName('triceps stretch')?.mode).toBe('time');
+    expect(byName('world greatest stretch')?.mode).toBe('reps');
+    expect(byName('weighted stretch lunge')?.mode).toBe('reps');
+  });
   it('moving exercises that only mention a hold word stay on reps', () => {
     expect(byName('front plank with twist')?.mode).toBe('reps');
     expect(byName('kettlebell hang clean')?.mode).toBe('reps');

@@ -230,7 +230,7 @@ export const rehabMenus: Record<InjuryArea, Record<InjuryStage, RehabItem[]>> = 
   neck: {
     protect: [
       reps('Chin tuck', undefined, 2, 10, 'Glide the head straight back, no tilting.'),
-      hold('Neck side stretch', undefined, 2, 20, 'Gentle, no pulling.'),
+      hold('Neck side stretch', '1403', 2, 20, 'Gentle, no pulling.'),
       reps('Scapular squeeze', undefined, 2, 12, 'Pull the shoulder blades back and down.'),
     ],
     restore: [

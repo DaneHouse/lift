@@ -25,7 +25,7 @@ Read SPEC.md and AGENTS.md first (CLEAN-ROOM RULE applies). This file is the han
 ## Decisions made in Run 3 (defaults, change if you disagree)
 
 - Deload weeks are counted from an exercise's first logged session. Sessions logged in a deload week do not move the target. 5/3/1 week is the number of logged sessions mod 4, and the training max rises by one increment per cycle.
-- Stretches in the library stay logged by reps. Only holds, carries and planks are timed.
+- Static stretches (50) are logged as timed holds, as are planks and carries. Dynamic or loaded stretches stay on reps.
 - Rehab items missing from the library (clamshell, wall sit, chin tuck and a few more) are created as custom exercises.
 - Check-in swaps use a fixed table of machine / seated / supported variations. If none fits, the lift is skipped for the day with a reason.
 - Pro gating (one injury free) is not enforced yet. It belongs with the paywall in P6.
