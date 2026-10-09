@@ -2,6 +2,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## LIFT fork — read first
+
+This repo is **LIFT**, Kassra's App Store build of openGym (public AGPL fork, `DaneHouse/lift`).
+**`docs/LIFT_PLAN.md` is the source of truth for what to build and in what order**; the openGym
+notes below describe the inherited code. Fork-specific overrides:
+
+- Backend for the App Store build is **Supabase** (auth, Postgres + RLS, Storage, Edge Functions), not the
+  self-hosted `api/`. `@supabase/supabase-js` is an allowed frontend dependency; keep everything else lean.
+- Keep the self-hosted and local-only modes working; LIFT-specific behaviour goes behind a build flag.
+- Repo is public: never commit secrets, `.env`, API keys, personal data, or code from `DaneHouse/lift-cleanroom`.
+- Upstream's GitLab mirror / release workflows are not ours; don't rely on them.
+- Commit after each completed item with tests green; push to `main` when the run prompt says so.
+
 ## What this is
 
 openGym is a self-hosted gym & body-weight tracker PWA. Two containers (`api` + `web`) plus a

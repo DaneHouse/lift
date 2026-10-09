@@ -1,0 +1,59 @@
+# LIFT — product plan for this fork
+
+LIFT is Kassra's App Store build of openGym. This repo is a public fork of
+[DuarteSantos8/openGym](https://github.com/DuarteSantos8/openGym) under AGPL-3.0, shipped to the App Store
+under openGym's app-store exception (NOTICE.md), so **the source stays public here**. Never commit secrets,
+personal data, or the private `DaneHouse/lift-cleanroom` code.
+
+## Decisions (locked 2026-10-09)
+
+- **Start from openGym's mobile flavor** (`VITE_MOBILE=1`, Capacitor). It already works fully on-device with
+  no server. Keep that working at every step; it is the offline core.
+- **Backend = Supabase from day one.** Replaces the "connect to a self-hosted server" mode for the App Store build.
+  - **Auth:** Supabase Auth with Sign in with Apple (required on iOS) and email magic link. Passkeys/pairing stay
+    for self-hosters but are hidden in the LIFT build.
+  - **Data:** phase 1 mirrors openGym's existing whole-state sync (`GET/PUT /api/data` with a `rev`) into one table:
+    `user_state(user_id uuid pk references auth.users, data jsonb, rev bigint, updated_at timestamptz)` with RLS
+    `user_id = auth.uid()`, and an RPC `put_state(data, expected_rev)` that rejects stale writes exactly like the
+    server does. Normalised tables can come later; do not block on them.
+  - **Media (progress photos):** Supabase Storage bucket `media`, path `<user_id>/<hash>`, RLS by folder.
+  - **Coach:** Supabase Edge Function that runs the existing prompts (`api/coach/prompts`, built to
+    `api/coach/core/prompts.js`) against the Anthropic API with the operator key stored as a function secret,
+    per-user daily limits, schema validation. The app never holds the key.
+  - **Account deletion:** in-app, via an Edge Function that deletes the auth user and all rows/files (Apple requirement).
+  - Schema, RLS and functions live in `supabase/` (migrations + functions) so they are reviewable in the repo.
+- **Payments:** RevenueCat later (Pro = coach, sync, health connectors). Not in this phase.
+- **iOS builds:** Capacitor `frontend/ios`, built on GitHub Actions macOS runners (free for this public repo) and
+  uploaded to TestFlight with an App Store Connect API key stored in GitHub secrets. Bundle id `com.danehouse.lift`,
+  App Store Connect app id `6821132633`. Display name "LIFT" (placeholder until naming).
+- **Look:** minimalist monochrome (true black / white, colour only where it carries meaning). Kassra's gym notes are the
+  feature list below.
+
+## Feature list (Kassra's gym notes)
+
+1. Minimalist monochrome theme.
+2. Rest-end cue: chime, haptic, original voice line, or the user's own clip; ducks or pauses music, then resumes. No
+   celebrity voices.
+3. Dynamic Island / Live Activity rest timer.
+4. Visible progressive overload: every target says why ("hit 3x8 last time, +5 lb").
+5. Tap plates to build the barbell weight; reverse view for a target weight.
+6. PT / injuries integrated into workouts (coach PT layer already in `api/coach/prompts/common.md`).
+7. More volume per session in templates and coach plans.
+8. Social links and the user's own screenshots on exercises.
+9. Apple Health read/write; Garmin via the official Health API only (later).
+
+## Before App Store submission (not before TestFlight)
+
+- Exercise GIFs/images: the bundled media come from ExerciseDB via a redistributed dataset with unclear rights
+  (NOTICE.md). Replace or license before public release. Fine for private TestFlight.
+- Privacy policy, nutrition labels (health data), review notes, screenshots.
+
+## Run order
+
+1. iOS pipeline: set bundle id / app name in Capacitor, add the GitHub Actions workflow that builds and uploads to
+   TestFlight. Ship the local-only mobile flavor to TestFlight.
+2. Monochrome theme.
+3. Supabase: `supabase/` migrations + RLS, auth screens (Apple + email), sync adapter swapped behind the existing
+   sync interface, media to Storage, account deletion.
+4. Coach Edge Function.
+5. Gym-floor features (rest cue, Live Activity, plate builder, overload reasons), then Health.
