@@ -121,10 +121,16 @@ export function beep(enabled, freq, dur, when) {
 // it, so the store and the native alarm can read the choice without this module.
 export { CHIME_PEAK, REST_SOUNDS, REST_SOUND_IDS, restSoundOf } from './rest-sounds.js'
 // `kind` is a REST_SOUNDS id; `true` (the old "classic" switch) still means the classic beeps.
+// LIFT on iPhone: the native side plays the end tone instead, lowering (ducking) whatever music
+// is playing for the moment it sounds and bringing it back after (lib/rest-alert.js registers it).
+let nativeCue = null
+export function setNativeCue(fn) { nativeCue = typeof fn === 'function' ? fn : null }
+
 export function chime(enabled, kind) {
   if (!enabled) return
   const id = kind === true ? 'classic' : kind
   const snd = Object.hasOwn(REST_SOUNDS, id) ? REST_SOUNDS[id] : REST_SOUNDS.chime
+  if (nativeCue) { try { nativeCue(snd); return } catch { /* falls back to Web Audio below */ } }
   try {
     for (const [freq, dur, when, glide] of snd.notes) {
       tone(freq, dur, when, snd === REST_SOUNDS.classic ? {} : { peak: snd.peak, hold: snd.hold, timbre: snd.timbre, glide })

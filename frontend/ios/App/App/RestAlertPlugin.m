@@ -10,4 +10,5 @@ CAP_PLUGIN(RestAlertPlugin, "RestAlert",
            CAP_PLUGIN_METHOD(setAccent, CAPPluginReturnPromise);
            CAP_PLUGIN_METHOD(setNext, CAPPluginReturnPromise);
            CAP_PLUGIN_METHOD(requestPermission, CAPPluginReturnPromise);
+           CAP_PLUGIN_METHOD(cue, CAPPluginReturnPromise);
 )

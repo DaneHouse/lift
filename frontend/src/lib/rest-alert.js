@@ -13,6 +13,7 @@ import { argb } from './format.js'
 import { accentPair } from './accent.js'
 import { MOBILE, isAndroid, isIOS } from './mobile.js'
 import { LIFT } from './lift.js'
+import { setNativeCue } from './sound.js'
 import { REST_SOUNDS } from './rest-sounds.js'
 
 export const REST_ALERT_ID = 42
@@ -259,4 +260,14 @@ export function setRestNext(text) {
     const p = await restPlugin()
     if (p) await p.RestAlert.setNext({ next: text || '' }).catch(() => {})
   })
+}
+
+// LIFT on iPhone: rest-end tones go through the native player so music ducks under them.
+if (MOBILE && LIFT) {
+  isIOS().then(ios => {
+    if (!ios) return
+    setNativeCue(snd => {
+      restPlugin().then(p => p && p.RestAlert.cue({ notes: snd.notes, peak: snd.peak ?? 0.6 })).catch(() => {})
+    })
+  }).catch(() => {})
 }

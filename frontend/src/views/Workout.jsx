@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useId, useRef, useState } from 'react'
 import { LIFT, openHowTo } from '../lib/lift.js'
+import { nextSession, todayTotals } from '../lib/next-session.js'
 import SwipeCards from '../components/SwipeCards.jsx'
 import SwipeRow from '../components/SwipeRow.jsx'
 import { useNavigate } from 'react-router-dom'
@@ -63,8 +64,24 @@ function StartChooser() {
   const todayOvr = S.dayPlan[todayISO()] !== undefined && pinState(S, S.dayPlan[todayISO()]) !== 'done' // a fulfilled pin is no override
   const idSet = new Set(todayIds)
   const others = S.routines.filter(r => !idSet.has(r.id))
+  // LIFT: once today's plan is logged, this screen says so and points at the next session instead
+  // of offering the one you just did again (it stays one tap away below, as "Train again").
+  const totals = LIFT ? todayTotals(S.workouts, todayISO()) : null
+  const doneIds = new Set(S.workouts.filter(w => w.d === todayISO()).flatMap(w => (Array.isArray(w.routineIds) ? w.routineIds : [w.routineId])))
+  const doneToday = !!totals && (!todayIds.length || todayIds.every(id => doneIds.has(id)))
+  const upNext = doneToday ? nextSession(S) : null
   return <div className="narrow">
-    <div className="hdr"><div><h1>{t('Start workout')}</h1><div className="sub">{t(DAYN[new Date().getDay()])} · {todayRoutines.length ? t('today is {0}', todayName) : t('rest day, but no one’s stopping you')}</div></div></div>
+    {doneToday && <div className="card lift-done">
+      <div className="lift-done-k"><Icon name="checkCircle" /> {t('Done for today')}</div>
+      <div className="big">{totals.names.join(' + ') || t('Workout')}</div>
+      <div className="muted small">{[t('{0} min', totals.min), totals.sets + ' ' + t('sets'), totals.prs ? totals.prs + ' PR' : null].filter(Boolean).join(' · ')}</div>
+      {upNext && <div className="lift-done-next">
+        <span className="dim small">{upNext.inDays === 1 ? t('Tomorrow') : t(DAYN[upNext.date.getDay()])}</span>
+        <span>{upNext.routines.map(r => r.name).join(' + ')}</span>
+      </div>}
+      <p className="small dim" style={{ margin: '10px 0 0' }}>{t('Recover: eat protein, drink water, sleep. The weights go up next time.')}</p>
+    </div>}
+    <div className="hdr"><div><h1>{doneToday ? t('Train again') : t('Start workout')}</h1><div className="sub">{t(DAYN[new Date().getDay()])} · {todayRoutines.length ? t('today is {0}', todayName) : t('rest day, but no one’s stopping you')}</div></div></div>
     {todayRoutines.length > 0 && <div className="card" style={{ borderColor: 'var(--acc)' }}>
       <h2 className="accent">{t("Today's plan")}{todayOvr ? ' · ' + t('rescheduled') : ''}</h2>
       <div className="row between" style={{ marginBottom: 12 }}>
@@ -666,7 +683,9 @@ function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSi
       {(ex.tg || ex.bp) && <span className="tag">{t(MUSCLE_NAME[ex.tg] || ex.tg || ex.bp)}</span>}
       {ex.eq && <span className="tag">{t(ex.eq)}</span>}
       {LIFT && !ex.missing && <button type="button" className="tag acc howto-tag" onClick={e => { e.stopPropagation(); openHowTo(exerciseNameText(ex)) }}>
-        <Icon name="play" /> {t('Watch how')}</button>}
+        <Icon name="play" /> {t('Watch')}</button>}
+      {LIFT && onSwap && !busy && <button type="button" className="tag howto-tag" onClick={e => { e.stopPropagation(); onSwap() }}>
+        <Icon name="swap" /> {t('Swap')}</button>}
       {best > 0 && <span className="tag nocap">{t('Best:')} {fmtNum(best)} {S.unit}</span>}
     </div>
     {/* Three notes can apply to one exercise and they are not interchangeable, so each keeps its

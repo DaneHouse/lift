@@ -2171,3 +2171,8 @@ button.wl-summary{width:100%;padding:0 0 10px;text-align:start;border-radius:var
 .lift-ob-start .input{text-align:center;padding:10px}
 .lift-ob-plan{display:flex;flex-direction:column;gap:8px;margin:6px 0 16px}
 .lift-ob-day{display:grid;grid-template-columns:48px 1fr auto;gap:10px;padding:14px;border-radius:var(--r);background:var(--surface)}
+
+/* LIFT: "Done for today" (views/Workout.jsx StartChooser) */
+.lift-done{margin-bottom:18px}
+.lift-done-k{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--green);margin-bottom:6px}
+.lift-done-next{display:flex;justify-content:space-between;align-items:baseline;margin-top:14px;padding-top:12px;border-top:var(--hair) solid var(--sep)}

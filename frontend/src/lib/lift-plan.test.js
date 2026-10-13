@@ -34,6 +34,12 @@ describe('buildLiftPlan', () => {
     expect(bench.weight).toBe(135)
     expect(mainLifts(p)).toContain('0025')
   })
+  it('moves main lifts linearly and accessories by double progression', () => {
+    const r = buildLiftPlan({ ...base, days: [1, 3, 5] }).routines[0]
+    expect(r.ex[0].prog).toBe('linear')
+    expect(r.ex[2]).toMatchObject({ prog: 'double' })
+    expect(r.ex[2].repsMin).toBeLessThan(r.ex[2].reps)
+  })
   it('is null without days', () => {
     expect(buildLiftPlan({ ...base, days: [] })).toBeNull()
   })

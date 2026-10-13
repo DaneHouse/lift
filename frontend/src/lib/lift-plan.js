@@ -80,7 +80,13 @@ export function buildLiftPlan(answers, equipment) {
   const used = Math.min(template.length, days.length)
   const routines = template.slice(0, used).map(([, name, emoji, list]) => ({
     id: uid(), name, emoji,
-    ex: shapeRoutine(list, answers).map(([id, sets, reps]) => ({ id, sets, reps, weight: Number(answers.starts?.[id]) > 0 ? Number(answers.starts[id]) : 0 })),
+    // Progressive overload, two ways (lib/progression.js): the first two lifts of a session move
+    // linearly (every rep hit → more weight); accessories use double progression, climbing reps
+    // through a range before the weight goes up.
+    ex: shapeRoutine(list, answers).map(([id, sets, reps], i) => ({
+      id, sets, reps, weight: Number(answers.starts?.[id]) > 0 ? Number(answers.starts[id]) : 0,
+      ...(i < 2 ? { prog: 'linear' } : { prog: 'double', repsMin: Math.max(5, reps - 4) }),
+    })),
   }))
   const schedule = scheduleOver(days, routines.length).map(({ day, slot }) => ({ day, routineId: routines[slot].id }))
   return { split, routines, schedule, fit }
