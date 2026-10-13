@@ -38,6 +38,7 @@ public class RestAlertPlugin: CAPPlugin {
         nc.addObserver(self, selector: #selector(didEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
         nc.addObserver(self, selector: #selector(willEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
         nc.addObserver(self, selector: #selector(didTakeScreenshot), name: UIApplication.userDidTakeScreenshotNotification, object: nil)
+        nc.addObserver(self, selector: #selector(didTakeScreenshot), name: .liftDeviceShaken, object: nil)
     }
 
     /// LIFT: a screenshot taken in the app offers "Report a bug" with that screen attached, like
@@ -237,4 +238,16 @@ final class CueDelegate: NSObject, AVAudioPlayerDelegate {
     init(_ done: @escaping () -> Void) { self.done = done }
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) { done() }
     func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) { done() }
+}
+
+extension Notification.Name {
+    static let liftDeviceShaken = Notification.Name("LIFTDeviceShaken")
+}
+
+/// LIFT: shake the phone to report a bug (same sheet as a screenshot, with the screen attached).
+extension UIWindow {
+    open override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
+        if motion == .motionShake { NotificationCenter.default.post(name: .liftDeviceShaken, object: nil) }
+        super.motionEnded(motion, with: event)
+    }
 }
