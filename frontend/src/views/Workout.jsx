@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useId, useRef, useState } from 'react'
+import { LIFT } from '../lib/lift.js'
 import SwipeCards from '../components/SwipeCards.jsx'
 import SwipeRow from '../components/SwipeRow.jsx'
 import { useNavigate } from 'react-router-dom'
@@ -1704,6 +1705,11 @@ function ActiveWorkout() {
       // progress, never on a re-tick, and never in the other layouts, where the marker stays put.
       if (collapseOn && freshUnitDone && nextUnit && freshUnit?.includes(fresh.cur)) {
         revealCur.current = true
+        update(s => { if (s.active) s.active.cur = nextUnit[0] })
+      }
+      // LIFT: in the card view too, finishing an exercise opens the next unfinished one, so its
+      // weights and machine are in view for the whole rest (the rest bar names it as well).
+      else if (LIFT && !collapseOn && freshUnitDone && nextUnit && freshUnit?.includes(fresh.cur)) {
         update(s => { if (s.active) s.active.cur = nextUnit[0] })
       }
 

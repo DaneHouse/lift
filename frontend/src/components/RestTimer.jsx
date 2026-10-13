@@ -153,6 +153,12 @@ function NextUp({ forIdx }) {
   const unit = useStore(st => st.S.unit)
   const n = nextUp(active, forIdx)
   if (!n) return <div className="rest-next">{t('Last set done. Finish when ready.')}</div>
-  const load = n.sec ? n.sec + ' s' : (n.w ? fmtNum(n.w) + ' ' + unit + ' × ' : '') + (n.r ?? '')
-  return <div className="rest-next"><b>{t('Next')}</b> · {exerciseNameText(exOr(n.id))} · {load}</div>
+  const reps = n.sec ? n.sec + ' s' : (n.r ?? '')
+  const w = n.w ? fmtNum(n.w) + ' ' + unit : ''
+  // Same exercise: the next set's numbers. A new exercise: its whole prescription, so you can walk
+  // over to the right station and set it up while you rest.
+  const fresh = n.idx !== forIdx
+  const sets = active.entries[n.idx].sets.filter(x => !x.done).length
+  const load = fresh ? [w, sets + ' × ' + reps].filter(Boolean).join(' · ') : (w ? w + ' × ' : '') + reps
+  return <div className="rest-next"><b>{fresh ? t('Up next') : t('Next set')}</b> · {exerciseNameText(exOr(n.id))} · {load}</div>
 }
