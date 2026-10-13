@@ -6,7 +6,7 @@ import Icon from './Icon.jsx'
 import CustomMedia, { CustomThumb } from './CustomMedia.jsx'
 import BodyMap from './BodyMap.jsx'
 import { musclesOf } from '../lib/muscles.js'
-import { LIFT } from '../lib/lift.js'
+import { LIFT, openHowTo } from '../lib/lift.js'
 
 // An exercise's picture, wherever one shows. A custom exercise goes to CustomMedia.jsx — its own
 // photo, GIF, video or link, from the local media store — and never through imgSrc/gifSrc, which
@@ -28,6 +28,9 @@ function MuscleMedia({ ex, id, compact, minimizable }) {
   return (
     <div className={'exmedia exmuscles' + (compact ? ' compact' : '') + (mini ? ' mini' : '')} id={id}>
       <BodyMap load={musclesOf(ex)} body={body} />
+      <button type="button" className="howto-btn" onClick={e => { e.stopPropagation(); openHowTo(exerciseNameFor(ex)) }}>
+        <Icon name="play" />{t('Watch how')}
+      </button>
     </div>
   )
 }

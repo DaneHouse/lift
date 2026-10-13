@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-import { LIFT } from './lib/lift.js'
+import { LIFT, openHowTo } from './lib/lift.js'
 import { APP_NAME } from './lib/lift.js'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
@@ -1018,6 +1018,7 @@ function ExerciseDetail({ ex, close }) {
         calculator would answer "your 1RM is 23 kg" about a number that gets smaller as you get
         stronger (issue #232). Cardio has none for the same kind of reason. */}
     {!isCardio(ex) && !isAssisted(ex) && <OneRM ex={ex} />}
+    {LIFT && !ex.missing && <button type="button" className="btn howto-wide" onClick={() => openHowTo(exerciseNameText(ex))}><Icon name="play" /> {t('Watch how to do it')}</button>}
     {instrFor(ex).length > 0 &&<><h4 className="sec">{t('How to')}{getLang() !== 'en' && !instrTranslated(ex) && <span className="dim" style={{ textTransform: 'none', letterSpacing: 0 }}> · {t('instructions in English')}</span>}</h4><ol className="steps-list">{instrFor(ex).map((s, i) => <li key={i}>{s}</li>)}</ol></>}
     {/* The catalogue is community-edited (catalogue/README.md): a wrong muscle, a clumsy step or a
         missing translation is one tap from an issue that already names the exercise. */}
