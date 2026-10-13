@@ -2,7 +2,7 @@
 // everything on this device, or connect to a self-hosted openGym server instead. See
 // lib/remote.js for the pairing flow this hands off to.
 import { useState, useRef, useEffect } from 'react'
-import { APP_NAME } from '../lib/lift.js'
+import { APP_NAME, LIFT } from '../lib/lift.js'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { t } from '../lib/i18n.js'
@@ -128,6 +128,13 @@ export default function MobileOnboarding() {
     <h1 style={{ fontSize: 34, fontWeight: 700, letterSpacing: '-.028em', margin: '10px 0 4px' }}>{APP_NAME}</h1>
   </>
   const wrap = { display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '78vh', textAlign: 'center' }
+  if (LIFT) return (
+    <div className="narrow" style={wrap}>
+      {head}
+      <div className="muted" style={{ marginBottom: 34 }}>{t('Your training log. Everything stays on this phone.')}</div>
+      <Button variant="primary" onClick={() => chooseLocalMode()}>{t('Get started')}</Button>
+    </div>
+  )
   return (
     <div className="narrow" style={wrap}>
       {head}

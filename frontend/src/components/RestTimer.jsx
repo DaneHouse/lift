@@ -5,6 +5,11 @@ import { REST_MAX } from '../lib/duration.js'
 import { durationSheet } from './DurationWheel.jsx'
 import { Button } from './ui.jsx'
 import Icon from './Icon.jsx'
+import { useStore } from '../store/useStore.js'
+import { LIFT } from '../lib/lift.js'
+import { nextUp } from '../lib/next-up.js'
+import { exOr } from '../lib/exercises.js'
+import { exerciseNameText, fmtNum } from '../lib/format.js'
 
 const clock = sec => Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0')
 
@@ -113,8 +118,9 @@ export default function RestTimer() {
   // turns Ready, so a thumb on +15 never lands on −15.
   const label = timer.kind === 'switch' ? t('Switch sides') : timer.paused ? t('Paused') : t('Rest')
   return (
-    <div id="timer" className={'rest' + (timer.paused ? ' paused' : '') + (timer.kind === 'switch' ? ' switch' : '') + (timer.ready ? ' ready' : '')}>
+    <div id="timer" className={'rest' + (timer.paused ? ' paused' : '') + (timer.kind === 'switch' ? ' switch' : '') + (timer.ready ? ' ready' : '') + (LIFT ? ' with-next' : '')}>
       <div className="bar" aria-hidden="true"><i style={{ width: pct + '%' }} /></div>
+      {LIFT && <NextUp forIdx={timer.forIdx} />}
       <button type="button" className="tclock" onClick={adjustRestSheet}
         aria-label={(timer.ready ? t('Ready') : clock(timer.left)) + '. ' + t('Change the time left')}>
         <span className="t" role={timer.ready ? 'status' : undefined} data-alt={timer.ready ? '0:00' : t('Ready')}>{timer.ready ? t('Ready') : clock(timer.left)}</span>
@@ -139,4 +145,14 @@ export default function RestTimer() {
       </div>
     </div>
   )
+}
+
+// LIFT: what the next set is, so the rest bar answers "what am I loading?" without scrolling.
+function NextUp({ forIdx }) {
+  const active = useStore(st => st.S.active)
+  const unit = useStore(st => st.S.unit)
+  const n = nextUp(active, forIdx)
+  if (!n) return <div className="rest-next">{t('Last set done. Finish when ready.')}</div>
+  const load = n.sec ? n.sec + ' s' : (n.w ? fmtNum(n.w) + ' ' + unit + ' × ' : '') + (n.r ?? '')
+  return <div className="rest-next"><b>{t('Next')}</b> · {exerciseNameText(exOr(n.id))} · {load}</div>
 }
