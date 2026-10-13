@@ -11,7 +11,8 @@
 import { t } from './i18n-core.js'
 import { argb } from './format.js'
 import { accentPair } from './accent.js'
-import { MOBILE, isAndroid } from './mobile.js'
+import { MOBILE, isAndroid, isIOS } from './mobile.js'
+import { LIFT } from './lift.js'
 import { REST_SOUNDS } from './rest-sounds.js'
 
 export const REST_ALERT_ID = 42
@@ -85,7 +86,8 @@ const enqueue = fn => {
 // call to it there, addListener included, rejects.
 let pluginP = null
 const restPlugin = () => pluginP || (pluginP = (async () => {
-  if (!(await isAndroid())) return null
+  // LIFT ships an iOS RestAlert too: the Live Activity countdown and the end-of-rest notification.
+  if (!(await isAndroid()) && !(LIFT && await isIOS())) return null
   const { registerPlugin } = await import('@capacitor/core')
   return { RestAlert: registerPlugin('RestAlert') }
 })().catch(() => null))
@@ -175,6 +177,13 @@ export function askNotifPermissionOnce() {
   if (askP) return askP
   askP = (async () => {
     try {
+      if (LIFT && await isIOS()) {
+        if (readAsked()) return readAsked() === 'granted'
+        const p = await restPlugin()
+        const got = p ? await p.RestAlert.requestPermission() : { granted: false }
+        writeAsked(got.granted ? 'granted' : 'denied')
+        return !!got.granted
+      }
       if (!(await isAndroid())) return false
       const { LocalNotifications } = await import('@capacitor/local-notifications')
       const perm = await LocalNotifications.checkPermissions()
@@ -238,4 +247,16 @@ async function deliver(alert) {
 async function cancelDelivered() {
   const p = await restPlugin()
   if (p) await p.RestAlert.cancel({ id: REST_ALERT_ID })
+}
+
+// LIFT: the "Up next" line for the iOS Live Activity, sent as it changes during a rest. Android's
+// RestAlert has no such method; the call is caught there like any other refusal.
+let lastNext = null
+export function setRestNext(text) {
+  if (!MOBILE || !LIFT || text === lastNext) return
+  lastNext = text
+  enqueue(async () => {
+    const p = await restPlugin()
+    if (p) await p.RestAlert.setNext({ next: text || '' }).catch(() => {})
+  })
 }

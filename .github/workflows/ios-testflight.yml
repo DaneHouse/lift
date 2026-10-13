@@ -47,6 +47,11 @@ jobs:
           npx cap sync ios
           node scripts/check-mobile-bundle.mjs
 
+      - name: Wire the native pieces (rest Live Activity, RestAlert plugin)
+        run: |
+          gem list -i xcodeproj >/dev/null || sudo gem install xcodeproj --no-document
+          ruby scripts/ios/add-rest-activity.rb
+
       - name: Install the App Store Connect API key
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}

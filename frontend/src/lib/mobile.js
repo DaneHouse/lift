@@ -23,6 +23,17 @@ export const MOBILE = import.meta.env.VITE_MOBILE === '1'
 //
 // @capacitor/core is imported dynamically (like every other Capacitor dependency here) so it
 // never lands in the web bundle. Capacitor.getPlatform() returns 'android' | 'ios' | 'web'.
+// LIFT: the iOS shell has its own RestAlert (ios/App/App/RestAlertPlugin.swift).
+export async function isIOS() {
+  if (!MOBILE) return false
+  try {
+    const { Capacitor } = await import('@capacitor/core')
+    return Capacitor.getPlatform() === 'ios'
+  } catch (e) {
+    return false
+  }
+}
+
 export async function isAndroid() {
   if (!MOBILE) return false
   try {

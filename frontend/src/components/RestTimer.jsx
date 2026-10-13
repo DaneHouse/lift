@@ -8,6 +8,7 @@ import Icon from './Icon.jsx'
 import { useStore } from '../store/useStore.js'
 import { LIFT } from '../lib/lift.js'
 import { nextUp } from '../lib/next-up.js'
+import { setRestNext } from '../lib/rest-alert.js'
 import { exOr } from '../lib/exercises.js'
 import { exerciseNameText, fmtNum } from '../lib/format.js'
 
@@ -152,7 +153,9 @@ function NextUp({ forIdx }) {
   const active = useStore(st => st.S.active)
   const unit = useStore(st => st.S.unit)
   const n = nextUp(active, forIdx)
-  if (!n) return <div className="rest-next">{t('Last set done. Finish when ready.')}</div>
+  const text = !n ? t('Last set done. Finish when ready.') : null
+  useEffect(() => { setRestNext(text ?? nextLine(n, forIdx, active, unit)) })
+  if (!n) return <div className="rest-next">{text}</div>
   const reps = n.sec ? n.sec + ' s' : (n.r ?? '')
   const w = n.w ? fmtNum(n.w) + ' ' + unit : ''
   // Same exercise: the next set's numbers. A new exercise: its whole prescription, so you can walk
@@ -161,4 +164,13 @@ function NextUp({ forIdx }) {
   const sets = active.entries[n.idx].sets.filter(x => !x.done).length
   const load = fresh ? [w, sets + ' × ' + reps].filter(Boolean).join(' · ') : (w ? w + ' × ' : '') + reps
   return <div className="rest-next"><b>{fresh ? t('Up next') : t('Next set')}</b> · {exerciseNameText(exOr(n.id))} · {load}</div>
+}
+
+function nextLine(n, forIdx, active, unit) {
+  const reps = n.sec ? n.sec + ' s' : (n.r ?? '')
+  const w = n.w ? fmtNum(n.w) + ' ' + unit : ''
+  const fresh = n.idx !== forIdx
+  const sets = active.entries[n.idx].sets.filter(x => !x.done).length
+  const load = fresh ? [w, sets + ' × ' + reps].filter(Boolean).join(' · ') : (w ? w + ' × ' : '') + reps
+  return (fresh ? t('Up next') : t('Next set')) + ' · ' + exerciseNameText(exOr(n.id)) + ' · ' + load
 }
