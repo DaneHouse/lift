@@ -78,6 +78,8 @@ const NEEDS_BALL = /exercise ball|stability ball|swiss ball|bosu/i
 // same target muscle, then the movement by name, then helper muscles. When `ex` is a loaded
 // lift, one that is loaded too beats a body-weight drill — a push-up is not a bench press.
 // `taken` keeps a routine from ending up with the same exercise twice. null when nothing fits.
+const BAR = new Set(['barbell', 'olympic barbell', 'ez barbell', 'trap bar'])
+const STAND_IN = { dumbbell: 1.5, 'smith machine': 1.2, 'leverage machine': 0.8, 'sled machine': 0.8 }
 export const substituteFor = (ex, equipment, taken) => {
   const hasBall = equipment.includes('stability ball') || equipment.includes('bosu ball')
   const exWords = words(ex), exSm = new Set([ex.mg, ...(ex.sm || [])])
@@ -90,6 +92,9 @@ export const substituteFor = (ex, equipment, taken) => {
     if (c.tg !== ex.tg && c.mg !== ex.mg && !sm) continue
     const score = 2 * (c.tg === ex.tg) + (c.mg === ex.mg) + 3 * jaccard(exWords, words(c)) + 2 * sm
       - (loaded && c.eq === 'body weight' ? 3 : 0)
+      // A barbell lift you cannot do is most often done with dumbbells or on a Smith machine,
+      // not on a cable or a band: those come first among equals.
+      + (BAR.has(ex.eq) ? (STAND_IN[c.eq] || 0) : 0)
     // id as the last key: the same equipment always gives the same plan
     if (score > bestScore || (score === bestScore && c.id < best.id)) { best = c; bestScore = score }
   }
@@ -99,7 +104,7 @@ export const substituteFor = (ex, equipment, taken) => {
 // Re-cuts a routine list for an equipment list: what you can already do stays, what you can't
 // is swapped for its closest match, and what has no match is dropped (with its routine, when
 // that leaves it empty). Sets and reps carry over unchanged.
-const fitRoutines = (routines, equipment) => {
+export const fitRoutines = (routines, equipment) => {
   let swapped = 0, dropped = 0
   const fitted = routines.map(([key, name, emoji, list]) => {
     const taken = new Set(list.map(([id]) => id))
@@ -135,3 +140,7 @@ export const buildStarterPlan = (id, equipment) => {
     ...(fit && { fit: { swapped: fit.swapped, dropped: fit.dropped } })
   }
 }
+
+// LIFT onboarding (lib/lift-plan.js) builds its own schedule from the days you pick, so it needs
+// the routine templates themselves: [key, name, emoji, [[exerciseId, sets, reps], …]], copied.
+export const planTemplate = id => PLANS[id]?.routines.map(([k, n, e, list]) => [k, n, e, list.map(x => [...x])]) ?? null

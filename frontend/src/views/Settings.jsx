@@ -623,6 +623,11 @@ export default function Settings({ page = null, find = null, via = null }) {
     reminders: () => <NotificationsCard S={S} update={update} toast={toast} />,
 
     plan: () => <>
+      {/* LIFT: walk through the onboarding interview again; it builds a new plan and keeps history. */}
+      {LIFT && <Section>
+        <Row icon="sparkles" title={t('Redo onboarding')} subtitle={t('Answer the questions again and get a new plan. Your history stays.')}
+          accessory="chevron" onClick={() => { update(st => { st.liftOnboarded = false }); nav('/home') }} />
+      </Section>}
       <Section>
         {/* Fixed Week (S.week) or Rotation (the live queue, lib/queue.js + lib/rotation.js).
             Derived from the queue, never stored. */}

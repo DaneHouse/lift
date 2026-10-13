@@ -128,13 +128,10 @@ export default function MobileOnboarding() {
     <h1 style={{ fontSize: 34, fontWeight: 700, letterSpacing: '-.028em', margin: '10px 0 4px' }}>{APP_NAME}</h1>
   </>
   const wrap = { display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '78vh', textAlign: 'center' }
-  if (LIFT) return (
-    <div className="narrow" style={wrap}>
-      {head}
-      <div className="muted" style={{ marginBottom: 34 }}>{t('Your training log. Everything stays on this phone.')}</div>
-      <Button variant="primary" onClick={() => chooseLocalMode()}>{t('Get started')}</Button>
-    </div>
-  )
+  // LIFT keeps everything on the phone (accounts come with sync later): no choice to make here,
+  // so local mode is chosen at once and the LIFT onboarding interview (LiftOnboarding.jsx) opens.
+  useEffect(() => { if (LIFT) chooseLocalMode() }, [])
+  if (LIFT) return null
   return (
     <div className="narrow" style={wrap}>
       {head}

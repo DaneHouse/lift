@@ -30,6 +30,7 @@ import TimerFlash from './components/TimerFlash.jsx'
 import { openDeviceLinkRedeem } from './components/Passkeys.jsx'
 import Login from './views/Login.jsx'
 import MobileOnboarding from './views/MobileOnboarding.jsx'
+import LiftOnboarding from './views/LiftOnboarding.jsx'
 import Home from './views/Home.jsx'
 import CheckIn from './views/CheckIn.jsx'
 import Plan from './views/Plan.jsx'
@@ -188,7 +189,9 @@ function Shell() {
   }, [inWorkout])
   // The chat owns the bottom of the screen as well: its composer sits where the tabs would be.
   // The first-launch card has no tabs either: they changed the route behind it.
-  const noTabs = inWorkout || loc.pathname === '/coach' || needsMobileOnboarding
+  // LIFT: the first-run interview that builds the plan, until it is done (Settings → Redo onboarding).
+  const liftOnboard = LIFT && !needsMobileOnboarding && S.liftOnboarded !== true && !S.active
+  const noTabs = inWorkout || loc.pathname === '/coach' || needsMobileOnboarding || liftOnboard
 
   const authed = user || isGuest
   if (!ready && !authed) return (
@@ -205,7 +208,7 @@ function Shell() {
           re-mounts the boundary, so the tab bar is always a way out */}
       <div id="app" className="vfade" key={loc.pathname}>
         <ErrorBoundary>
-          {!authed ? <Login /> : needsMobileOnboarding ? <MobileOnboarding /> : (
+          {!authed ? <Login /> : needsMobileOnboarding ? <MobileOnboarding /> : (authed && liftOnboard) ? <LiftOnboarding /> : (
             <Routes>
               <Route path="/home" element={<Home />} />
               {/* Gym check-in — switched off in Settings, the route falls through to the
