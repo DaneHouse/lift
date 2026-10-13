@@ -48,15 +48,47 @@ personal data, or the private `DaneHouse/lift-cleanroom` code.
   (NOTICE.md). Replace or license before public release. Fine for private TestFlight.
 - Privacy policy, nutrition labels (health data), review notes, screenshots.
 
-## Run order
+## Phases (agreed 2026-10-13)
 
-1. iOS pipeline: set bundle id / app name in Capacitor, add the GitHub Actions workflow that builds and uploads to
-   TestFlight. Ship the local-only mobile flavor to TestFlight.
-2. Monochrome theme.
-3. Supabase: `supabase/` migrations + RLS, auth screens (Apple + email), sync adapter swapped behind the existing
-   sync interface, media to Storage, account deletion.
-4. Coach Edge Function.
-5. Gym-floor features (rest cue, Live Activity, plate builder, overload reasons), then Health.
+Each phase ends with a gate Kassra signs off. Done items are marked ✓.
+
+### Phase 1 — The lift (foundation)
+- ✓ iOS pipeline to TestFlight, monochrome theme, LIFT name, muscle map + "Watch how"
+- ✓ Live Activity / Dynamic Island rest timer, end-of-rest notification, "Up next" in the rest bar,
+  next exercise opens after the last set
+- Onboarding, one question per screen: units, goal, experience, days/week, session length, gym, injuries,
+  starting weights (or "find them in session 1") → builds the plan. Settings → Redo onboarding (keeps history)
+- Gym-aware: pick a chain or setup (24 Hour Fitness, LA Fitness, Planet Fitness, Equinox, home, hotel) →
+  preset equipment; edit machines per gym; "Machine taken" one-tap swap that keeps progression
+- Progressive overload made visible: defaults (linear compounds, double accessories, high-rep rehab),
+  a why-line on every target, auto deloads, PR history per lift
+- Rest-end cue that ducks music; finished-workout screen (Kassra's idea)
+- **Gate G1:** Kassra trains two weeks on it with no blocker
+
+### Phase 2 — Accounts + coach
+- Supabase: Sign in with Apple + email, sync, in-app account deletion
+- Coach Edge Function (Claude, operator key): plan from onboarding, weekly review, session debrief, PT layer
+- Injuries screen: stage, rehab block at the top of sessions, check-in swaps, refer-out
+- **Gate G2:** friends on TestFlight via the public link
+
+### Phase 3 — Launch v1.0
+- RevenueCat Pro (coach, sync, health) + paywall; pricing (Kassra)
+- Name + icon (Kassra), exercise media decision (Gym visual license or "Watch how")
+- Privacy policy, App Store listing, screenshots, review notes
+- **Gate G3:** Kassra presses Submit
+
+### Phase 4 — Health layer (1.x updates)
+- Apple Health read/write + Apple Watch data; Garmin (official Health API, application needed); WHOOP; Oura
+- One readiness read that adjusts today's lift (cap the top set, trim volume, or push)
+- Cardio presets logged beside lifts: zone 2, intervals, run, bike, row, incline walk, stairs
+
+### Phase 5 — Nutrition
+- Photo + barcode logging, macros set from the training goal (cut / maintain / bulk), protein focus
+
+### Phase 6 — Lifestyle + Watch
+- Habits: daylight (Watch time-in-daylight), steps, sleep timing, optional custom habits (e.g. grounding),
+  no health claims
+- Apple Watch app for logging sets
 
 ## Product direction (Kassra, 2026-10-13)
 
