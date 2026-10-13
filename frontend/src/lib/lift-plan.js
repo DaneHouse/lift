@@ -4,6 +4,8 @@
 //             gym (GYMS key), injuries: [area…], note, starts: { exerciseId: weight } }
 import { uid } from './format.js'
 import { planTemplate, fitRoutines } from './starter.js'
+import { EXIDX } from './exercises.js'
+import { eqAvailable } from './equipment.js'
 
 export const GOALS = ['strength', 'muscle', 'general', 'fatloss']
 export const EXPERIENCE = ['new', 'returning', 'regular']
@@ -29,6 +31,25 @@ export const GYMS = {
     'pull-up bar', 'band', 'resistance band', 'landmine'] },
   'home-dumbbells': { name: 'Home (dumbbells)', equipment: ['body weight', 'dumbbell', 'bench', 'band', 'resistance band', 'pull-up bar'] },
   'hotel': { name: 'Hotel gym', equipment: ['body weight', 'dumbbell', 'bench', 'cable', 'stationary bike', 'elliptical machine', 'band'] },
+}
+
+// Extra volume for longer sessions, by routine: accessory and core work added after the template's
+// lifts (60 min +1, 75 min +2, 90 min +3), only what the gym has and never a repeat.
+// [exerciseId, sets, reps]
+const EXTRA = {
+  push: [['0188', 3, 12], ['0194', 3, 12], ['0175', 3, 15], ['1030', 3, 12]],
+  pull: [['3914', 3, 12], ['0318', 3, 12], ['0406', 3, 12], ['0472', 3, 12]],
+  legs: [['1060', 3, 10], ['4295', 3, 12], ['0594', 3, 15], ['0175', 3, 15]],
+  upper: [['0188', 3, 12], ['3914', 3, 12], ['0194', 3, 12], ['0318', 3, 12]],
+  lower: [['1060', 3, 10], ['4295', 3, 12], ['0594', 3, 15], ['0472', 3, 12]],
+  full: [['0188', 3, 12], ['3914', 3, 12], ['0175', 3, 15], ['0594', 3, 15]],
+}
+const extraFor = key => EXTRA[key] || EXTRA[key.startsWith('upper') ? 'upper' : key.startsWith('lower') ? 'lower' : 'full']
+export const extraCount = length => (length >= 90 ? 3 : length >= 75 ? 2 : length >= 60 ? 1 : 0)
+export function addVolume(key, list, length, equipment) {
+  const have = new Set(list.map(([id]) => id))
+  const add = extraFor(key).filter(([id]) => EXIDX[id] && !have.has(id) && (!equipment || eqAvailable(equipment, EXIDX[id])))
+  return [...list, ...add.slice(0, extraCount(length))]
 }
 
 // Which split fits the number of days.
@@ -78,12 +99,12 @@ export function buildLiftPlan(answers, equipment) {
   let fit = null
   if (gymEq) { const f = fitRoutines(template, gymEq); template = f.routines; fit = { swapped: f.swapped, dropped: f.dropped } }
   const used = Math.min(template.length, days.length)
-  const routines = template.slice(0, used).map(([, name, emoji, list]) => ({
+  const routines = template.slice(0, used).map(([key, name, emoji, list]) => ({
     id: uid(), name, emoji,
     // Progressive overload, two ways (lib/progression.js): the first two lifts of a session move
     // linearly (every rep hit → more weight); accessories use double progression, climbing reps
     // through a range before the weight goes up.
-    ex: shapeRoutine(list, answers).map(([id, sets, reps], i) => ({
+    ex: addVolume(key, shapeRoutine(list, answers), answers.length || 60, gymEq).map(([id, sets, reps], i) => ({
       id, sets, reps, weight: Number(answers.starts?.[id]) > 0 ? Number(answers.starts[id]) : 0,
       ...(i < 2 ? { prog: 'linear' } : { prog: 'double', repsMin: Math.max(5, reps - 4) }),
     })),

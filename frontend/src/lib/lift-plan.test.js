@@ -40,6 +40,14 @@ describe('buildLiftPlan', () => {
     expect(r.ex[2]).toMatchObject({ prog: 'double' })
     expect(r.ex[2].repsMin).toBeLessThan(r.ex[2].reps)
   })
+  it('adds accessory volume for longer sessions, only what the gym has', () => {
+    const count = len => buildLiftPlan({ ...base, length: len, days: [1, 3, 5] }).routines[0].ex.length
+    expect(count(45)).toBe(4)   // trimmed to the essentials
+    expect(count(90)).toBe(9)   // push day: 6 + 3 accessories
+    expect(count(75)).toBeGreaterThan(count(60))
+    const pf = buildLiftPlan({ ...base, gym: 'planet-fitness', length: 90, days: [1, 3, 5] })
+    for (const r of pf.routines) for (const e of r.ex) expect(eqAvailable(GYMS['planet-fitness'].equipment, EXIDX[e.id])).toBe(true)
+  })
   it('is null without days', () => {
     expect(buildLiftPlan({ ...base, days: [] })).toBeNull()
   })
