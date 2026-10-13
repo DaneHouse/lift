@@ -57,3 +57,20 @@ personal data, or the private `DaneHouse/lift-cleanroom` code.
    sync interface, media to Storage, account deletion.
 4. Coach Edge Function.
 5. Gym-floor features (rest cue, Live Activity, plate builder, overload reasons), then Health.
+
+## Product direction (Kassra, 2026-10-13)
+
+LIFT is a **lift-first health app**: the daily lift is the centre, everything else feeds it.
+
+- **Foundation (now):** tracker + progressive overload (linear for compounds, double for accessories,
+  high-rep double for rehab; every target says why; auto deloads), guided onboarding that builds the plan,
+  gym-aware plans (pick your gym/chain → preset equipment; "machine taken" one-tap swap that keeps
+  progression), coach with the PT layer, gym-floor polish (Live Activity, Up next, Watch how, music-ducking cue).
+- **Health layer (next):** Apple Health / Apple Watch, Garmin (official Health API), WHOOP, Oura → one readiness
+  read that adjusts today's lift; cardio presets (zone 2, intervals, run, bike, row, incline walk, stairs).
+- **Nutrition (after):** photo / barcode logging with macros tied to the training goal.
+- **Lifestyle habits (after):** daylight (Apple Watch time-in-daylight), steps, sleep timing, optional habits
+  (e.g. grounding) logged without health claims.
+- Competitors already aggregating health: Bevel (recovery/strain/sleep/nutrition/strength, Apple Health),
+  Vora (free, 500+ wearables, photo food), CARMA. LIFT wins on: lift-first, coach + PT, gym-aware, floor UX.
+- Retention through value, not friction: Apple owns cancellation; no dark patterns.
