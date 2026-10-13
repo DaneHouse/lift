@@ -271,3 +271,11 @@ if (MOBILE && LIFT) {
     })
   }).catch(() => {})
 }
+
+// LIFT on iPhone: a screenshot taken in the app opens "Report a bug" with that screen attached.
+let onScreenshot = null
+export function bindScreenshotReport(cb) { onScreenshot = cb }
+if (MOBILE && LIFT) {
+  isIOS().then(ios => ios && restPlugin().then(p => p && p.RestAlert.addListener('screenshot', ev => { if (onScreenshot) onScreenshot(ev) })))
+    .catch(() => {})
+}

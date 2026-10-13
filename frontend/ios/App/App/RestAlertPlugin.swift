@@ -4,6 +4,7 @@ import UIKit
 import UserNotifications
 import AudioToolbox
 import AVFoundation
+import WebKit
 #if canImport(ActivityKit)
 import ActivityKit
 #endif
@@ -36,6 +37,23 @@ public class RestAlertPlugin: CAPPlugin {
         let nc = NotificationCenter.default
         nc.addObserver(self, selector: #selector(didEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
         nc.addObserver(self, selector: #selector(willEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+        nc.addObserver(self, selector: #selector(didTakeScreenshot), name: UIApplication.userDidTakeScreenshotNotification, object: nil)
+    }
+
+    /// LIFT: a screenshot taken in the app offers "Report a bug" with that screen attached, like
+    /// TestFlight's own flow. The image is a snapshot of the app's web view (no Photos access needed).
+    @objc private func didTakeScreenshot() {
+        DispatchQueue.main.async {
+            guard let web = self.bridge?.webView else { return }
+            let config = WKSnapshotConfiguration()
+            web.takeSnapshot(with: config) { image, _ in
+                guard let data = image?.jpegData(compressionQuality: 0.7) else {
+                    self.notifyListeners("screenshot", data: [:])
+                    return
+                }
+                self.notifyListeners("screenshot", data: ["jpeg": data.base64EncodedString()])
+            }
+        }
     }
 
     // MARK: JS API

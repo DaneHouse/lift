@@ -31,6 +31,8 @@ import { openDeviceLinkRedeem } from './components/Passkeys.jsx'
 import Login from './views/Login.jsx'
 import MobileOnboarding from './views/MobileOnboarding.jsx'
 import LiftOnboarding from './views/LiftOnboarding.jsx'
+import { reportFromScreenshot } from './components/ReportBug.jsx'
+import { bindScreenshotReport } from './lib/rest-alert.js'
 import Home from './views/Home.jsx'
 import CheckIn from './views/CheckIn.jsx'
 import Plan from './views/Plan.jsx'
@@ -190,6 +192,7 @@ function Shell() {
   // The chat owns the bottom of the screen as well: its composer sits where the tabs would be.
   // The first-launch card has no tabs either: they changed the route behind it.
   // LIFT: the first-run interview that builds the plan, until it is done (Settings → Redo onboarding).
+  useEffect(() => { if (LIFT) bindScreenshotReport(reportFromScreenshot) }, [])
   const liftOnboard = LIFT && !needsMobileOnboarding && S.liftOnboarded !== true && !S.active
   const noTabs = inWorkout || loc.pathname === '/coach' || needsMobileOnboarding || liftOnboard
 

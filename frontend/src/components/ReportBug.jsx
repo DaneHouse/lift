@@ -6,9 +6,9 @@ import Icon from './Icon.jsx'
 import { useUI } from '../store/useUI.js'
 
 // LIFT: the bug / feedback sheet. Opened from Settings and from a workout's menu.
-function ReportBug({ close, screen }) {
+function ReportBug({ close, screen, shot }) {
   const [msg, setMsg] = useState('')
-  const [file, setFile] = useState(null)
+  const [file, setFile] = useState(shot || null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const send = async () => {
@@ -25,6 +25,7 @@ function ReportBug({ close, screen }) {
     <h3>{t('Report a bug')}</h3>
     <div className="muted small" style={{ marginBottom: 12 }}>{t('What happened, and what you expected instead. A screenshot helps.')}</div>
     <textarea className="input" rows={5} maxLength={4000} autoFocus value={msg} onChange={e => setMsg(e.target.value)} placeholder={t('e.g. The rest timer didn’t ring with the phone locked')} />
+    {file && file.type?.startsWith('image/') && <img className="report-shot" alt="" src={URL.createObjectURL(file)} />}
     <label className="btn plain report-attach" style={{ marginTop: 10 }}>
       <Icon name="image" /><span>{file ? file.name || t('Screenshot attached') : t('Attach a screenshot')}</span>
       <input type="file" accept="image/*" hidden onChange={e => setFile(e.target.files?.[0] || null)} />
@@ -35,4 +36,16 @@ function ReportBug({ close, screen }) {
   </>
 }
 
-export const reportBugSheet = screen => useUI.getState().openSheet(close => <ReportBug close={close} screen={screen || location.hash} />)
+export const reportBugSheet = (screen, shot) => useUI.getState().openSheet(close => <ReportBug close={close} screen={screen || location.hash} shot={shot} />)
+
+// A screenshot taken in the app (lib/rest-alert.js, iOS) → this sheet with the shot attached.
+export function reportFromScreenshot(ev) {
+  let shot = null
+  if (ev?.jpeg) {
+    const bin = atob(ev.jpeg)
+    const bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+    shot = new File([bytes], 'screenshot.jpg', { type: 'image/jpeg' })
+  }
+  reportBugSheet(location.hash, shot)
+}
