@@ -24,8 +24,8 @@ const EXPERIENCE = [
   ['regular', () => [t('Training regularly'), t('Consistent for a while now.')], 'trophy'],
 ]
 const GYM_LIST = [
-  ['24-hour-fitness', 'building'], ['la-fitness', 'building'], ['planet-fitness', 'building'], ['equinox', 'building'],
-  ['other-gym', 'dumbbell'], ['home-rack', 'barbell'], ['home-dumbbells', 'dumbbell'], ['hotel', 'bed'],
+  ['24-hour-fitness', 'machine'], ['la-fitness', 'machine'], ['planet-fitness', 'machine'], ['equinox', 'machine'],
+  ['other-gym', 'dumbbell'], ['home-rack', 'barbell'], ['home-dumbbells', 'dumbbell'], ['hotel', 'key'],
 ]
 const AREA_NAME = { shoulder: 'Shoulder', 'elbow-wrist': 'Elbow / wrist', neck: 'Neck', 'low-back': 'Low back', hip: 'Hip', knee: 'Knee', ankle: 'Ankle' }
 const LENGTHS = [45, 60, 75, 90]

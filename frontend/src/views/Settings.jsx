@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, forwardRef, useSyncExternalStore } from 'react'
+import { reportBugSheet } from '../components/ReportBug.jsx'
 import { useNavigate, useParams, useLocation, Navigate } from 'react-router-dom'
 import { useStore, DEF, hasData } from '../store/useStore.js'
 import { healthStatus, loadHealth, enableHealth, disableHealth, openHealthConnect, onHealthChange } from '../lib/health-sync.js'
@@ -30,7 +31,7 @@ import { syncMedia, fetchToStore } from '../lib/media-sync.js'
 import { getMediaStatus, subscribeMediaStatus, pendingRefCount } from '../lib/media-owed.js'
 import { limitsFrom, fmtMB, MB } from '../lib/media-limits.js'
 import { setRestAccent } from '../lib/rest-alert.js'
-import { LIFT } from '../lib/lift.js'
+import { LIFT, APP_NAME } from '../lib/lift.js'
 import { CUSTOM, accentKey, adjustedIn, applyAccent, cleanHex, inkOn, isGrey } from '../lib/accent.js'
 import { checkForUpdate, downloadAndInstall } from '../lib/update.js'
 import { forgetCoach } from '../lib/coach-api.js'
@@ -977,7 +978,11 @@ function SettingsRoot({ ctx, preview, open, user, sync, home, go }) {
             value={preview[id]?.() || null} accessory="chevron" onClick={() => open(id)} className="sp-root-row" />)}
         </Section>
       ))}
-      <div className="dim small sp-version">openGym v{__APP_VERSION__}</div>
+      {/* LIFT: bugs and ideas go straight to the developer (lib/feedback.js). */}
+      {LIFT && <Section>
+        <Row icon="flag" title={t('Report a bug')} subtitle={t('Or send an idea. A screenshot helps.')} accessory="chevron" onClick={() => reportBugSheet('settings')} />
+      </Section>}
+      <div className="dim small sp-version">{APP_NAME} v{__APP_VERSION__}</div>
     </>}
   </div>
 }

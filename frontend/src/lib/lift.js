@@ -15,3 +15,8 @@ export const brand = s => (LIFT && typeof s === 'string' ? s.replaceAll('openGym
 // YouTube search for the exercise's form. A link, not a copy: nothing is hosted or bundled.
 export const howToUrl = name => 'https://www.youtube.com/results?search_query=' + encodeURIComponent((name || '') + ' proper form')
 export const openHowTo = name => window.open(howToUrl(name), '_blank', 'noopener,noreferrer')
+
+// LIFT's Supabase project. The publishable key is meant to ship inside the app: row-level security
+// decides what it can do (today: send feedback, nothing else). Never put a secret/service key here.
+export const SUPABASE_URL = 'https://yrmlukevtgbjtfwkdiox.supabase.co'
+export const SUPABASE_KEY = 'sb_publishable_vVApJBYIZZhpK4d3MnTAUg_J7I2J7j9'

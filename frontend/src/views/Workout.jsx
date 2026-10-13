@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useId, useRef, useState } from 'react'
+import { reportBugSheet } from '../components/ReportBug.jsx'
 import { LIFT, openHowTo } from '../lib/lift.js'
 import { nextSession, todayTotals } from '../lib/next-session.js'
 import SwipeCards from '../components/SwipeCards.jsx'
@@ -425,6 +426,7 @@ function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSi
       { title: t('Look it up'), items: [
         { icon: 'history', label: t('History'), sub: last ? t('Last time') + ' ' + fmtDate(last.d) : undefined, onClick: () => exerciseHistorySheet(entry.id) },
         { icon: 'info', label: t('How to do it'), onClick: () => exerciseDetailSheet(ex) },
+        LIFT && { icon: 'flag', label: t('Report a bug'), onClick: () => reportBugSheet('workout: ' + exerciseNameFor(ex)) },
       ] },
       { title: t('Settings'), items: [
         onProgressionSettings && { icon: 'slider', label: t('Exercise settings'), sub: guidance ? t(guidance.policyLabel) : t('Sets, reps, rest, progression'), onClick: onProgressionSettings },
