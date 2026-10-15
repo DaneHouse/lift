@@ -1,0 +1,119 @@
+<title>Get LIFT</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: one narrow column like the app itself; numbered steps are the real install order. */
+:root {
+  --bg: #000000; --surface: #141414; --line: #2a2a2a; --fg: #ffffff; --muted: #a3a3a3; --ok: #30d158;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #ffffff; --surface: #f3f3f3; --line: #dddddd; --fg: #0a0a0a; --muted: #5c5c5c; --ok: #1f9d47; color-scheme: light } }
+:root[data-theme="light"] { --bg: #ffffff; --surface: #f3f3f3; --line: #dddddd; --fg: #0a0a0a; --muted: #5c5c5c; --ok: #1f9d47; color-scheme: light }
+body { background: var(--bg); color: var(--fg); font: 500 16px/1.55 var(--body); }
+.wrap { max-width: 620px; margin: 0 auto; padding-block: 40px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 36px; }
+h1 { font: 900 64px/0.95 var(--display); letter-spacing: -0.03em; margin: 0; text-wrap: balance; }
+h2 { font: 700 22px/1.2 var(--display); margin: 0 0 10px; text-wrap: balance; }
+p { margin: 0; color: var(--muted); max-width: 62ch; }
+p strong, li strong { color: var(--fg); }
+.lede { font-size: 18px; margin-top: 14px; }
+.label { font: 500 12px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.steps { display: grid; gap: 12px; list-style: none; margin: 0; padding: 0; counter-reset: step; }
+.steps > li { display: grid; grid-template-columns: 40px 1fr; gap: 14px; padding: 18px; background: var(--surface); border-radius: 16px; }
+.steps > li::before { counter-increment: step; content: counter(step); font: 900 28px/1 var(--display); }
+.steps h3 { font: 700 18px/1.3 var(--display); margin: 2px 0 6px; }
+.steps > li > div { min-width: 0; }
+a { color: var(--fg); text-underline-offset: 3px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; padding: 12px 18px; border-radius: 999px; background: var(--fg); color: var(--bg); font: 700 15px/1 var(--body); text-decoration: none; border: 0; cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--fg); box-shadow: inset 0 0 0 1px var(--line); }
+.btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }
+.code { font: 500 13px/1.4 var(--mono); word-break: break-all; color: var(--fg); }
+ul.plain { margin: 8px 0 0; padding-left: 18px; color: var(--muted); display: grid; gap: 6px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.tile { padding: 18px; border-radius: 16px; box-shadow: inset 0 0 0 1px var(--line); }
+.tile h3 { font: 700 17px/1.3 var(--display); margin: 0 0 6px; }
+.msg { padding: 18px; border-radius: 16px; background: var(--surface); white-space: pre-wrap; color: var(--fg); font: 500 15px/1.5 var(--body); }
+.note { display: flex; gap: 10px; align-items: baseline; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; transform: translateY(-1px); }
+footer { color: var(--muted); font-size: 13px; }
+@media (max-width: 420px) { h1 { font-size: 48px; } }
+</style>
+
+<main class="wrap">
+  <header>
+    <div class="label">Friends &amp; family beta</div>
+    <h1>Get LIFT</h1>
+    <p class="lede">LIFT builds your training plan from a few questions, runs your workout at the gym, and adds weight when you're ready. It's free while it's in testing. Setup takes about two minutes on your iPhone.</p>
+  </header>
+
+  <section>
+    <ol class="steps">
+      <li><div>
+        <h3>Install TestFlight</h3>
+        <p>TestFlight is Apple's free app for trying apps before they're on the App Store.</p>
+        <a class="btn ghost" href="https://apps.apple.com/app/testflight/id899247664">Get TestFlight on the App Store</a>
+      </div></li>
+      <li><div>
+        <h3>Open the invite on your iPhone</h3>
+        <p>Tap the link on your phone, then <strong>Accept</strong> and <strong>Install</strong>. LIFT shows up on your home screen like any other app.</p>
+        <a class="btn" href="https://testflight.apple.com/join/DNFM3WyJ">Join the LIFT beta</a>
+        <p class="code" style="margin-top:10px">testflight.apple.com/join/DNFM3WyJ</p>
+      </div></li>
+      <li><div>
+        <h3>Answer the setup questions</h3>
+        <p>About a minute: pounds or kilos, your goal, experience, the days you train, how long a session is, your gym (pick all the places you train), anything that hurts, and what you lift now. LIFT builds your plan from that.</p>
+      </div></li>
+      <li><div>
+        <h3>Start your first workout</h3>
+        <p>Tap <strong>Start</strong> on today's workout. Type the weight once and it fills every set. Tick a set when it's done and the rest timer starts.</p>
+      </div></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>At the gym</h2>
+    <div class="grid">
+      <div class="tile"><h3>Rest timer on your lock screen</h3><p>The countdown shows in the Dynamic Island and on the lock screen, and an alert sounds when rest is over. Allow notifications the first time it asks.</p></div>
+      <div class="tile"><h3>Up next</h3><p>The rest bar tells you the next set, or the next exercise and its weight, so you can walk over and set up.</p></div>
+      <div class="tile"><h3>Watch</h3><p>Not sure how an exercise goes? Tap <strong>Watch</strong> for a form video.</p></div>
+      <div class="tile"><h3>Swap</h3><p>Machine taken? Tap <strong>Swap</strong> and pick an alternative that works the same muscles.</p></div>
+      <div class="tile"><h3>It gets heavier on its own</h3><p>Hit every rep and the weight goes up next time. Miss and it holds. Stall three times and it backs off so you can build up again.</p></div>
+      <div class="tile"><h3>Redo your plan</h3><p>Settings → Plan &amp; schedule → <strong>Redo onboarding</strong>. Your history stays.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Found a bug or have an idea?</h2>
+    <p>This is an early build, so tell me everything. In LIFT, <strong>take a screenshot</strong> or <strong>shake your phone</strong>. A report form opens with that screen attached; write what happened and tap Send. You can also use <strong>Settings → Report a bug</strong>.</p>
+  </section>
+
+  <section>
+    <h2>Good to know</h2>
+    <ul class="plain">
+      <li><strong>Updates:</strong> TestFlight tells you when there's a new version. Open TestFlight and tap <strong>Update</strong>. Each build works for 90 days, so keep it updated.</li>
+      <li><strong>Your data:</strong> everything stays on your phone for now. Settings → Data &amp; backup exports a copy.</li>
+      <li><strong>If the link says it's not accepting testers:</strong> the build is still with Apple for a quick review. Try again later that day.</li>
+      <li><strong>You need</strong> an iPhone on a recent iOS. The lock-screen timer needs iOS 16.2 or later.</li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="label" style="margin-bottom:10px">Text to send a friend</div>
+    <div class="msg" id="msg">I'm building a lifting app called LIFT and want you to try it. Install TestFlight from the App Store, then open this on your iPhone: https://testflight.apple.com/join/DNFM3WyJ
+It asks a few questions and builds your plan. If anything's off, screenshot it in the app and hit send.</div>
+    <button class="btn" id="copy" type="button">Copy message</button>
+  </section>
+
+  <footer class="note"><span class="dot" aria-hidden="true"></span><span>LIFT beta · iPhone only for now</span></footer>
+</main>
+
+<script>
+document.getElementById('copy').addEventListener('click', async e => {
+  const text = document.getElementById('msg').innerText
+  try { await navigator.clipboard.writeText(text); e.target.textContent = 'Copied' }
+  catch { const r = document.createRange(); r.selectNodeContents(document.getElementById('msg')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); e.target.textContent = 'Selected, copy it' }
+  setTimeout(() => { e.target.textContent = 'Copy message' }, 2000)
+})
+</script>
