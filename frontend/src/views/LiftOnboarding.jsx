@@ -38,7 +38,7 @@ export default function LiftOnboarding() {
   const redo = !!S.liftProfile
   const [step, setStep] = useState(0)
   const [a, setA] = useState(() => ({
-    unit: S.unit || 'lb', goal: null, experience: null, days: [1, 3, 5], length: 60, gym: null,
+    unit: S.unit || 'lb', goal: null, experience: null, days: [1, 3, 5], length: 60, gym: null, gyms: [],
     injuries: [], note: '', starts: {}, ...(S.liftProfile || {}),
   }))
   const set = patch => setA(v => ({ ...v, ...patch }))
@@ -47,6 +47,9 @@ export default function LiftOnboarding() {
   const lifts = plan ? mainLifts(plan) : []
 
   const canNext = { goal: !!a.goal, experience: !!a.experience, days: a.days.length > 0, gym: !!a.gym }[key] ?? true
+  // Several places to train: the first one picked is the main gym the plan is built for; every pick
+  // becomes an equipment profile, so switching gyms later (Settings → Equipment) is one tap.
+  const toggleGym = v => { const gyms = (a.gyms || []).includes(v) ? a.gyms.filter(x => x !== v) : [...(a.gyms || []), v]; set({ gyms, gym: gyms[0] || null }) }
   const next = () => setStep(s => Math.min(STEPS.length - 1, s + 1))
   const back = () => setStep(s => Math.max(0, s - 1))
 
@@ -59,9 +62,10 @@ export default function LiftOnboarding() {
     if ((S.unit || 'kg') !== a.unit) setUnit(a.unit)
     update(st => {
       // The gym becomes an equipment profile you can edit in Settings → Equipment, and is the one in use.
-      const profile = { ...newProfile(gym.name), equipment: [...gym.equipment], lift: true }
-      st.equipProfiles = [...(st.equipProfiles || []).filter(p => !p.lift), profile]
-      st.activeEquipId = profile.id
+      const picks = (a.gyms && a.gyms.length ? a.gyms : [a.gym]).filter(Boolean)
+      const profiles = picks.map(k => ({ ...newProfile(GYMS[k].name), equipment: [...GYMS[k].equipment], lift: true }))
+      st.equipProfiles = [...(st.equipProfiles || []).filter(p => !p.lift), ...profiles]
+      st.activeEquipId = profiles[0].id
       st.equipFilterOn = true
       st.routines.push(...built.routines)
       for (let d = 0; d <= 6; d++) st.week[d] = []
@@ -139,8 +143,8 @@ export default function LiftOnboarding() {
       {key === 'gym' && <>
         <div className="ob-eyebrow">{t('Your gym')}</div>
         <h1 className="ob-h">{t('Where do you train?')}</h1>
-        <p className="ob-p">{t('Your plan only uses what is there. You can edit the machines later in Settings → Equipment.')}</p>
-        <div className="ob-choices">{GYM_LIST.map(([v, icon]) => choice(a.gym === v, icon, GYMS[v].name, null, () => set({ gym: v })))}</div>
+        <p className="ob-p">{t('Pick every place you train. Your first pick is your main gym and the plan only uses what it has; the others are saved to switch to. Edit machines later in Settings → Equipment.')}</p>
+        <div className="ob-choices">{GYM_LIST.map(([v, icon]) => choice((a.gyms || []).includes(v), icon, GYMS[v].name, a.gyms?.[0] === v && a.gyms.length > 1 ? t('Main gym') : null, () => toggleGym(v)))}</div>
       </>}
 
       {key === 'injuries' && <>
