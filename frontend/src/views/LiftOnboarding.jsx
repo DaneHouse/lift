@@ -53,7 +53,9 @@ export default function LiftOnboarding() {
   const next = () => setStep(s => Math.min(STEPS.length - 1, s + 1))
   const back = () => setStep(s => Math.max(0, s - 1))
 
-  const keepPlan = () => update(st => { st.liftOnboarded = true })
+  // LIFT keeps a dated backup in Files after every workout (Files → On My iPhone → LIFT), so a
+  // phone that loses the app's storage never loses the training log.
+  const keepPlan = () => update(st => { st.liftOnboarded = true; st.autoBackup = true })
   const finish = () => {
     const built = buildLiftPlan(a)
     if (!built) return
@@ -76,6 +78,7 @@ export default function LiftOnboarding() {
         daysPerWeek: a.days.length, preferredDays: [...a.days], sessionMin: a.length, equipment: [...gym.equipment], limitations } }
       st.liftProfile = { ...a, at: Date.now(), split: built.split }
       st.liftOnboarded = true
+      st.autoBackup = true
     })
   }
 
