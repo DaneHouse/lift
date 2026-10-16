@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { APP_NAME } from '../lib/lift.js'
+import { surveySheet } from '../components/Survey.jsx'
+import { APP_NAME, LIFT } from '../lib/lift.js'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { effectiveRoutines, effectiveRoutineIds, nextTrainingDay, streakWeeks, lastBW, setsDoneActive } from '../lib/history.js'
@@ -22,6 +23,7 @@ export default function Home() {
   const nav = useNavigate()
   const S = useStore(s => s.S)
   const user = useStore(s => s.user)
+  const update = useStore(s => s.update)
   // The banner switched off and the sync stuck: a dot on the gear (Settings → Show connection status).
   const trouble = useConnectionTrouble()
   const [weekOffset, setWeekOffset] = useState(0)
@@ -176,6 +178,11 @@ export default function Home() {
       </div>
     )}
 
+    {/* LIFT: ask testers once what they want, until they answer or dismiss it. */}
+    {LIFT && !S.surveyDone && !S.active && <div className="card tappable" {...tappable(surveySheet)}>
+      <div className="row between"><div><div className="lbl2">{t('Help shape LIFT')}</div><div className="ttl">{t('What do you want from a workout app?')}</div></div>
+      <button className="iconbtn" aria-label={t('Dismiss')} onClick={e => { e.stopPropagation(); update(st => { st.surveyDone = true }) }}><Icon name="xmark" /></button></div>
+    </div>}
     {!S.routines.length && !S.active && (
       <div className="card">
         <div className="row" style={{ gap: 10, marginBottom: 6 }}>

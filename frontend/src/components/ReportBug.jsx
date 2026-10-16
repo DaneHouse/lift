@@ -11,10 +11,11 @@ function ReportBug({ close, screen, shot }) {
   const [file, setFile] = useState(shot || null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [kind, setKind] = useState('bug')
   const send = async () => {
     setBusy(true); setErr('')
     try {
-      await sendFeedback({ message: msg, file, screen, appVersion: typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '', device: navigator.userAgent })
+      await sendFeedback({ kind, message: msg, file, screen, appVersion: typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '', device: navigator.userAgent })
       close()
       useUI.getState().toast?.(t('Sent. Thank you.'))
     } catch {
@@ -22,7 +23,11 @@ function ReportBug({ close, screen, shot }) {
     } finally { setBusy(false) }
   }
   return <>
-    <h3>{t('Report a bug')}</h3>
+    <h3>{kind === 'bug' ? t('Report a bug') : t('Share an idea')}</h3>
+    <div className="chips" style={{ margin: '0 0 10px' }}>
+      <button type="button" className={'chip nocap' + (kind === 'bug' ? ' on' : '')} onClick={() => setKind('bug')}>{t('Bug')}</button>
+      <button type="button" className={'chip nocap' + (kind === 'idea' ? ' on' : '')} onClick={() => setKind('idea')}>{t('Idea')}</button>
+    </div>
     <div className="muted small" style={{ marginBottom: 12 }}>{t('What happened, and what you expected instead. A screenshot helps.')}</div>
     <textarea className="input" rows={5} maxLength={4000} autoFocus value={msg} onChange={e => setMsg(e.target.value)} placeholder={t('e.g. The rest timer didn’t ring with the phone locked')} />
     {file && file.type?.startsWith('image/') && <img className="report-shot" alt="" src={URL.createObjectURL(file)} />}

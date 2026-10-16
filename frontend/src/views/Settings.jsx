@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, forwardRef, useSyncExternalStore } from 'react'
+import { surveySheet } from '../components/Survey.jsx'
 import { reportBugSheet } from '../components/ReportBug.jsx'
 import { useNavigate, useParams, useLocation, Navigate } from 'react-router-dom'
 import { useStore, DEF, hasData } from '../store/useStore.js'
@@ -981,6 +982,7 @@ function SettingsRoot({ ctx, preview, open, user, sync, home, go }) {
       {/* LIFT: bugs and ideas go straight to the developer (lib/feedback.js). */}
       {LIFT && <Section>
         <Row icon="flag" title={t('Report a bug')} subtitle={t('Or send an idea. A screenshot helps.')} accessory="chevron" onClick={() => reportBugSheet('settings')} />
+        <Row icon="chat" title={t('What do you want from a workout app?')} subtitle={t('Two-minute survey')} accessory="chevron" onClick={surveySheet} />
       </Section>}
       <div className="dim small sp-version">{APP_NAME} v{__APP_VERSION__}</div>
     </>}
